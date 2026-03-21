@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>六轴工业焊接机器人仿真系统</title>
+    <style>
+        /* ================= 核心主题与 CSS 变量 ================= */
+        :root {
+            --bg-color: #f5f5f7;
+            --panel-bg: rgba(255, 255, 255, 0.75);
+            --text-color: #1d1d1f;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --screen-bg: rgba(255, 255, 255, 0.85);
+            --screen-text: #1d1d1f;
+            --btn-bg: #ffffff;
+            --btn-border: rgba(0, 0, 0, 0.1);
+            --btn-hover: #f0f0f0;
+            --accent-color: #0071e3;
+            --danger-color: #ff3b30;
+            --success-color: #34c759;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --panel-bg: rgba(28, 28, 30, 0.75);
+            --text-color: #f5f5f7;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --screen-bg: rgba(28, 28, 30, 0.85);
+            --screen-text: #f5f5f7;
+            --btn-bg: #1c1c1e;
+            --btn-border: rgba(255, 255, 255, 0.15);
+            --btn-hover: #2c2c2e;
+            --accent-color: #0a84ff;
+            --danger-color: #ff453a;
+            --success-color: #32d74b;
+        }
+
+        /* ================= 全局与布局 ================= */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; background: var(--bg-color); color: var(--text-color); transition: background 0.3s; }
+        
+        #app { display: flex; height: 100vh; width: 100vw; }
+        #canvas-container { flex: 1; position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+        
+        /* ================= 示教器 UI (Teach Pendant) ================= */
+        #teach-pendant {
+            position: relative;
+            width: 420px;
+            max-width: 100vw;
+            flex-shrink: 0;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 24px rgba(0,0,0,0.04);
+            z-index: 10;
+            transition: margin-right 0.3s ease, background 0.3s, border-color 0.3s;
+        }
+        #teach-pendant.collapsed {
+            margin-right: -420px;
+        }
+        .tp-toggle-btn {
+            position: absolute;
+            left: -24px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 60px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+            z-index: 11;
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .tp-header {
+            background: transparent;
+            color: var(--text-color);
+            padding: 15px 20px;
+            text-align: left;
+            font-weight: 600;
+            letter-spacing: normal;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .theme-select { background: rgba(120,120,128,0.1); color: var(--text-color); border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+        .theme-select:hover { background: rgba(120,120,128,0.2); }
+
+        .tp-screen {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--screen-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--screen-text);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .tp-screen.show {
+            opacity: 1;
+        }
+
+        .tp-body { flex: 1; overflow-y: auto; padding: 0 15px 15px 15px; }
+
+        .control-group {
+            border: none;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            background: rgba(120,120,128,0.08);
+        }
+
+        .control-group legend { padding: 0 4px; font-weight: 600; font-size: 13px; color: var(--text-color); opacity: 0.6; margin-bottom: 8px; }
+
+        /* 控件样式 */
+        .row { display: flex; align-items: center; margin-bottom: 12px; justify-content: space-between; }
+        .row label { width: 40px; font-weight: 500; font-size: 13px; opacity: 0.8; }
+        .row input[type="range"] { flex: 1; margin: 0 12px; cursor: pointer; accent-color: var(--accent-color); height: 4px; border-radius: 2px; outline: none; }
+        .row input[type="number"] { width: 70px; padding: 6px 8px; background: rgba(120,120,128,0.1); color: var(--text-color); border: none; border-radius: 8px; text-align: right; outline: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; transition: background 0.2s; }
+        .row input[type="number"]:focus { background: rgba(120,120,128,0.2); }
+        .val-display { width: 50px; text-align: right; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; opacity: 0.6; }
+
+        button {
+            background: rgba(120,120,128,0.1); color: var(--text-color);
+            border: none; padding: 10px 14px;
+            border-radius: 10px; cursor: pointer; font-weight: 500; font-size: 13px;
+            transition: all 0.2s; flex: 1; margin: 0 4px;
+        }
+        button:hover { background: rgba(120,120,128,0.2); }
+        button:active { transform: scale(0.96); }
+        
+        .btn-primary { background: var(--accent-color); color: #fff; }
+        .btn-primary:hover { background: #005bb5; color: #fff; }
+        .btn-success { background: var(--success-color); color: #fff; }
+        .btn-success:hover { background: #248a3d; color: #fff; }
+        .btn-danger { background: var(--danger-color); color: #fff; }
+        .btn-danger:hover { background: #d32f2f; color: #fff; }
+
+        .radio-group { display: flex; gap: 16px; font-size: 12px; margin-top: 8px; }
+        .radio-group label { display: flex; align-items: center; cursor: pointer; width: auto; opacity: 0.8; }
+        .radio-group input { margin-right: 6px; accent-color: var(--accent-color); }
+
+        #point-list { list-style: none; max-height: 120px; overflow-y: auto; font-size: 13px; border-radius: 12px; padding: 8px; background: rgba(120,120,128,0.05); margin-top: 8px; }
+        #point-list li { padding: 6px 8px; border-bottom: 1px solid rgba(120,120,128,0.1); display: flex; justify-content: space-between; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+        #point-list li:last-child { border-bottom: none; }
+        
+        /* 浮动提示与滑动开关 */
+        #overlay-ui { position: absolute; bottom: 15px; left: 15px; z-index: 5; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(120,120,128,0.3); transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: var(--success-color); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .toggle-container { display: flex; align-items: center; gap: 12px; background: var(--panel-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 8px 16px; border-radius: 20px; color: var(--text-color); font-size: 13px; font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(120,120,128,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(120,120,128,0.4); }
+
+        /* 简约视图切换按钮 */
+        .view-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 18px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            padding: 0;
+            font-family: inherit;
+        }
+        .view-btn:hover {
+            background: var(--btn-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .view-btn:active {
+            transform: translateY(0);
+        }
+        .view-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            box-shadow: 0 2px 8px rgba(0,113,227,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 左侧 3D 视图 -->
+    <div id="canvas-container">
+        <div id="top-left-ui" style="position: absolute; top: 15px; left: 15px; z-index: 5; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <label for="model-upload" class="view-btn" style="width: auto; padding: 0 15px; border-radius: 18px; font-size: 13px; font-weight: bold;">上传工件</label>
+                <input type="file" id="model-upload" accept=".stl,.gltf,.glb,.obj,.zip" style="display: none;">
+                <span id="model-status" style="font-size: 12px; color: var(--text-color); background: var(--panel-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border-color); display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">未加载模型</span>
+            </div>
+            
+            <div id="model-controls" style="display: none; background: var(--panel-bg); backdrop-filter: blur(10px); padding: 12px; border-radius: 16px; border: 1px solid var(--border-color); flex-direction: column; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 220px;">
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: -4px; padding-left: 2px;">变换模式</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+                    <button id="btn-mode-translate" class="view-btn active" style="width: 100%; height: 32px; font-size: 11px;" title="平移">平移</button>
+                    <button id="btn-mode-rotate" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="旋转">旋转</button>
+                    <button id="btn-mode-scale" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="缩放">缩放</button>
+                </div>
+                
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: -4px; padding-left: 2px;">工件管理</div>
+                <div id="btn-toggle-axes-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-lock-model" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="锁定位置">未锁定</button>
+                    <button id="btn-toggle-axes" class="view-btn active" style="width: 100%; height: 32px; font-size: 11px;" title="显示坐标系">坐标系</button>
+                </div>
+
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: -4px; padding-left: 2px;">位置与吸附</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>X:</span>
+                        <input type="number" id="model-pos-x" value="5" step="0.1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Y:</span>
+                        <input type="number" id="model-pos-y" value="0" step="0.1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Z:</span>
+                        <input type="number" id="model-pos-z" value="0" step="0.1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 0 4px;">
+                    <span style="opacity: 0.7;">网格吸附</span>
+                    <label class="switch" style="transform: scale(0.7); transform-origin: right;">
+                        <input type="checkbox" id="toggle-grid-snap">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <div class="view-btn" style="flex: 1; padding: 0 10px; border-radius: 18px; font-size: 11px; cursor: default; justify-content: space-between; height: 32px;">
+                        <span>比例:</span>
+                        <input type="number" id="model-scale" value="1" step="0.1" style="width: 45px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-weight: bold; font-size: 11px;">
+                    </div>
+                    <button id="btn-remove-model" class="view-btn" style="flex: 0 0 60px; height: 32px; color: var(--danger-color); border-color: var(--danger-color); font-size: 11px;" title="移除工件">移除</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-perspectives" style="position: absolute; top: 15px; right: 15px; z-index: 5; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+            <div style="background: var(--panel-bg); backdrop-filter: blur(10px); padding: 10px; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 140px;">
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: 4px; text-align: center;">工件视角</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-wp-view-x" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 X+ 视图">X+</button>
+                    <button id="btn-wp-view-x-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 X- 视图">X-</button>
+                    <button id="btn-wp-view-y" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Y+ 视图">Y+</button>
+                    <button id="btn-wp-view-y-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Y- 视图">Y-</button>
+                    <button id="btn-wp-view-z" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Z+ 视图">Z+</button>
+                    <button id="btn-wp-view-z-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Z- 视图">Z-</button>
+                </div>
+                <button id="btn-focus-wp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px; margin-top: 4px;">聚焦工件</button>
+            </div>
+        </div>
+
+        <div id="overlay-ui">
+            <div id="status-panel" style="background: var(--screen-bg); color: var(--screen-text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 12px 16px; border-radius: 12px; font-size: 12px; line-height: 1.4; box-shadow: 0 4px 16px rgba(0,0,0,0.05); border: 1px solid var(--border-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); margin: 0; height: auto; min-width: 200px;">
+                TCP POS:<br>X: 0.00  Y: 0.00  Z: 0.00<br><br>JOINTS:<br>J1: 0.0° J2: 0.0° J3: 0.0° J4: 0.0° J5: 0.0° J6: 0.0°
+            </div>
+            <div id="view-controls" style="display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap;">
+                <button id="btn-view-x" class="view-btn" title="X轴视图">X</button>
+                <button id="btn-view-x-opp" class="view-btn" title="X'轴视图">X'</button>
+                <button id="btn-view-y" class="view-btn" title="Y轴视图">Y</button>
+                <button id="btn-view-y-opp" class="view-btn" title="Y'轴视图">Y'</button>
+                <button id="btn-view-z" class="view-btn" title="Z轴视图">Z</button>
+                <button id="btn-view-z-opp" class="view-btn" title="Z'轴视图">Z'</button>
+                <button id="btn-view-i" class="view-btn" title="45度轴测图">45°</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧 示教器面板 -->
+    <div id="teach-pendant">
+        <div class="tp-toggle-btn" id="tp-toggle-btn">▶</div>
+        <div class="tp-header">
+            <span>TEACH PENDANT</span>
+            <select id="theme-select" class="theme-select">
+                <option value="system">System</option>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </div>
+
+        <div id="insert-modal" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center;">
+            <div style="background: var(--bg-color); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px;">插入点位</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label>X:</label>
+                        <input type="number" id="modal-input-x" value="0" step="0.1" style="width: 150px; padding: 5px;">
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label>Y:</label>
+                        <input type="number" id="modal-input-y" value="0" step="0.1" style="width: 150px; padding: 5px;">
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label>Z:</label>
+                        <input type="number" id="modal-input-z" value="0" step="0.1" style="width: 150px; padding: 5px;">
+                    </div>
+                    <button id="modal-btn-current" style="padding: 5px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">使用当前点</button>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="modal-btn-cancel" style="padding: 5px 15px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">取消</button>
+                    <button id="modal-btn-confirm" style="padding: 5px 15px; background: var(--accent-color); color: white; border: none; border-radius: 4px; cursor: pointer;">确定</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tp-screen" id="tp-screen">
+            SYSTEM BOOT... OK.<br>
+            ROBOT READY.<br>
+            WAITING FOR COMMAND...
+        </div>
+
+        <div class="tp-body">
+            <!-- 手动控制 -->
+            <fieldset class="control-group">
+                <legend>手动控制 (Jogging)</legend>
+                <div style="margin-bottom: 10px;">
+                    <div class="radio-group" style="flex-wrap: wrap;">
+                        <label><input type="radio" name="jog-mode" value="joint" checked> 关节(Joint)</label>
+                        <label><input type="radio" name="jog-mode" value="cartesian"> 笛卡尔(Cartesian)</label>
+                        <label><input type="radio" name="jog-mode" value="posture"> 姿态保持(Posture)</label>
+                    </div>
+                </div>
+                <div id="joint-controls"></div>
+                <div id="cartesian-controls" style="display: none;"></div>
+            </fieldset>
+
+            <!-- 点位管理与执行 -->
+            <fieldset class="control-group">
+                <legend>程序执行</legend>
+                
+                <!-- 第一组：点位管理 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <button id="btn-save-point" title="保存当前点" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        保存当前点
+                    </button>
+                    <button id="btn-insert-point" title="插入点位" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        插入点位
+                    </button>
+                </div>
+
+                <!-- 第二组：指令管理 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 12px; background: rgba(120,120,128,0.05); padding: 6px; border-radius: 12px; border: 1px solid rgba(120,120,128,0.1);">
+                    <select id="cmd-select" style="flex: 1; font-size: 12px; padding: 8px; border-radius: 8px; background: var(--btn-bg); color: var(--text-color); border: 1px solid var(--border-color); outline: none; cursor: pointer; appearance: auto;">
+                        <option value="ARC_START">起弧 (ARC_START)</option>
+                        <option value="WEAVE_START">开始摆动 (WEAVE_START)</option>
+                        <option value="WEAVE_STOP">停止摆动 (WEAVE_STOP)</option>
+                        <option value="ARC_STOP">熄弧 (ARC_STOP)</option>
+                        <option value="WAIT">等待 (WAIT 1s)</option>
+                    </select>
+                    <button id="btn-insert-cmd" class="btn-primary" style="font-size: 12px; padding: 8px 12px; border-radius: 8px; margin: 0; flex: 0 0 auto;">插入指令</button>
+                </div>
+
+                <!-- 第三组：辅助操作 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <button id="btn-clear-point" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center;">清空程序</button>
+                    <button id="btn-reset-pos" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center;">回初始点</button>
+                </div>
+
+                <!-- 第五组：导入导出 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                    <button id="btn-download-prog" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        导出程序
+                    </button>
+                    <button id="btn-import-prog" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        导入程序
+                    </button>
+                    <input type="file" id="import-prog-file" style="display: none;" accept=".json">
+                </div>
+
+                <ul id="point-list" style="max-height: 150px;"></ul>
+
+                <!-- 第四组：运行控制 -->
+                <div style="display: flex; margin-top: 15px; gap: 12px; padding-top: 12px; border-top: 1px solid rgba(120,120,128,0.2);">
+                    <button class="btn-success" id="btn-run" style="flex: 1.2; height: 50px; font-size: 16px; border-radius: 14px; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span>▶</span> 运行 (RUN)
+                    </button>
+                    <button class="btn-danger" id="btn-stop" style="flex: 1; height: 50px; font-size: 16px; border-radius: 14px; font-weight: 600; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span>■</span> 停止 (STOP)
+                    </button>
+                </div>
+            </fieldset>
+
+            <!-- 轨迹规划 -->
+            <fieldset class="control-group">
+                <legend>轨迹规划</legend>
+                <div class="row">
+                    <label style="width:70px;">全局速度:</label>
+                    <input type="range" id="global-speed" min="1" max="100" value="30">
+                    <span class="val-display" id="speed-val">30%</span>
+                </div>
+                <div style="margin: 10px 0;">
+                    <div style="font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 8px;">插补模式:</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="interp" value="ptp" checked> PTP</label>
+                        <label><input type="radio" name="interp" value="line"> Line(直线)</label>
+                        <label><input type="radio" name="interp" value="circle"> Circle(圆弧)</label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- 焊接工艺 -->
+            <fieldset class="control-group" style="margin-top: -8px;">
+                <legend>焊接工艺</legend>
+                <div style="margin-bottom: 5px;">
+                    <div style="font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 6px;">工艺选择:</div>
+                    <div class="radio-group" style="margin-top: 4px;">
+                        <label><input type="radio" name="weld" value="laser" checked> 激光焊</label>
+                        <label><input type="radio" name="weld" value="arc"> 电弧焊(摆弧)</label>
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 8px;">
+                    <label style="width:70px;">摆弧幅度:</label>
+                    <input type="range" id="weave-amplitude" min="0" max="20" value="4">
+                    <span class="val-display" id="weave-val">0.4</span>
+                </div>
+            </fieldset>
+
+            <!-- 显示轨迹 -->
+            <fieldset class="control-group" style="margin-top: -8px;">
+                <legend style="display: none;">显示控制</legend>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; opacity: 0.8;">
+                    <span>显示轨迹</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-traj" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+</div>
+
+<!-- 引入 Three.js 及相关组件 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+    // 全局：按回车键时取消输入框焦点，触发 change 事件
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+            e.target.blur();
+        }
+    });
+
+    /* ================= 主题管理 ================= */
+    const themeSelect = document.getElementById('theme-select');
+    function applyTheme(theme) {
+        if (theme === 'system') {
+            document.body.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        } else {
+            document.body.setAttribute('data-theme', theme);
+        }
+    }
+    themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+
+    /* ================= 示教器折叠与 Toast ================= */
+    document.getElementById('tp-toggle-btn').addEventListener('click', () => {
+        const tp = document.getElementById('teach-pendant');
+        tp.classList.toggle('collapsed');
+        document.getElementById('tp-toggle-btn').innerText = tp.classList.contains('collapsed') ? '◀' : '▶';
+    });
+
+    const tpScreen = document.getElementById('tp-screen');
+    let toastTimeout;
+    const observer = new MutationObserver(() => {
+        tpScreen.classList.add('show');
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            tpScreen.classList.remove('show');
+        }, 3000);
+    });
+    observer.observe(tpScreen, { childList: true, characterData: true, subtree: true });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if(themeSelect.value === 'system') applyTheme('system');
+    });
+    applyTheme('system');
+
+    /* ================= 核心变量与状态 ================= */
+    let scene, camera, renderer, controls;
+    let robotBase, tcp;
+    const joints = []; // 存储6个关节对象及其属性
+    const cartesianAxes = [
+        { name: 'X', axis: 'x', sign: 1, inputElement: null },
+        { name: 'Y', axis: 'z', sign: -1, inputElement: null },
+        { name: 'Z', axis: 'y', sign: 1, inputElement: null }
+    ];
+    let waypoints = []; // 保存的示教点
+    let selectedPointIndex = -1; // 当前选中的点索引
+    let isRunning = false;
+    let showTrajectory = true;
+    
+    // 轨迹绘制相关
+    let trajGeometry, trajMaterial, trajLine;
+    const trajPoints = [];
+
+    // 焊接特效相关
+    let weldLight;
+
+    // 模型加载相关
+    let uploadedModel = null;
+    let modelAxes = null;
+    let globalAxesHelper = null;
+    let transformControl = null;
+
+    // 运行状态机
+    let runState = {
+        path: [], // 规划好的路径点序列
+        currentIndex: 0,
+        progress: 0,
+        mode: 'ptp',
+        weldMode: 'laser',
+        speed: 0.3,
+        weaveAmplitude: 0.4,
+        baseTarget: new THREE.Vector3() // 用于摆弧的基准点
+    };
+
+    /* ================= 初始化 Three.js 场景 ================= */
+    function initScene() {
+        const container = document.getElementById('canvas-container');
+        scene = new THREE.Scene();
+        
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(20, 15, 30);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 6, 0);
+        controls.update();
+
+        // 光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // 辅助工具
+        const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x888888);
+        scene.add(gridHelper);
+        globalAxesHelper = new THREE.AxesHelper(5);
+        scene.add(globalAxesHelper);
+
+        // 轨迹线初始化
+        trajMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+        trajGeometry = new THREE.BufferGeometry();
+        trajLine = new THREE.Line(trajGeometry, trajMaterial);
+        scene.add(trajLine);
+
+        // 模型变换控制
+        transformControl = new THREE.TransformControls(camera, renderer.domElement);
+        transformControl.addEventListener('dragging-changed', function (event) {
+            controls.enabled = !event.value;
+        });
+        transformControl.addEventListener('change', function () {
+            if (uploadedModel) {
+                // 网格吸附逻辑
+                if (document.getElementById('toggle-grid-snap').checked) {
+                    const snap = 0.5; // 吸附步长
+                    uploadedModel.position.x = Math.round(uploadedModel.position.x / snap) * snap;
+                    uploadedModel.position.y = Math.round(uploadedModel.position.y / snap) * snap;
+                    uploadedModel.position.z = Math.round(uploadedModel.position.z / snap) * snap;
+                }
+
+                if (transformControl.getMode() === 'scale') {
+                    const scaleInput = document.getElementById('model-scale');
+                    if (scaleInput && document.activeElement !== scaleInput) {
+                        scaleInput.value = uploadedModel.scale.x.toFixed(2);
+                    }
+                } else if (transformControl.getMode() === 'translate') {
+                    // 更新位置输入框
+                    const posX = document.getElementById('model-pos-x');
+                    const posY = document.getElementById('model-pos-y');
+                    const posZ = document.getElementById('model-pos-z');
+                    if (posX && document.activeElement !== posX) posX.value = uploadedModel.position.x.toFixed(2);
+                    if (posY && document.activeElement !== posY) posY.value = (uploadedModel.position.z * -1).toFixed(2);
+                    if (posZ && document.activeElement !== posZ) posZ.value = uploadedModel.position.y.toFixed(2);
+                }
+            }
+        });
+        
+        // 初始隐藏变换控制，直到上传模型
+        transformControl.visible = false;
+        scene.add(transformControl);
+
+        const resizeObserver = new ResizeObserver(() => {
+            onWindowResize();
+        });
+        resizeObserver.observe(container);
+
+        // 屏幕按键视图切换
+        const targetCenter = new THREE.Vector3(0, 8, 0);
+        const distance = 35;
+        
+        function setView(pos) {
+            camera.position.copy(pos);
+            camera.up.set(0, 1, 0);
+            controls.target.copy(targetCenter);
+            controls.update();
+        }
+
+        function setWorkpieceView(axis, isOpposite = false) {
+            let target = new THREE.Vector3(0, 8, 0);
+            let dist = 35;
+            let quaternion = new THREE.Quaternion();
+
+            if (uploadedModel) {
+                const box = new THREE.Box3().setFromObject(uploadedModel);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                dist = Math.max(maxDim * 2.5, 10);
+                target.copy(center);
+                quaternion.copy(uploadedModel.quaternion);
+            }
+
+            // Local direction vector
+            let dir = new THREE.Vector3();
+            if (axis === 'X') dir.set(isOpposite ? -1 : 1, 0, 0);
+            else if (axis === 'Y') dir.set(0, isOpposite ? -1 : 1, 0);
+            else if (axis === 'Z') dir.set(0, 0, isOpposite ? -1 : 1);
+
+            // Transform local direction to world space
+            dir.applyQuaternion(quaternion);
+            
+            const pos = target.clone().add(dir.multiplyScalar(dist));
+            
+            // Determine camera up vector
+            let up = new THREE.Vector3(0, 1, 0);
+            if (axis === 'Y') {
+                // If looking along Y axis, use Z as up
+                up.set(0, 0, isOpposite ? 1 : -1).applyQuaternion(quaternion);
+            } else {
+                // Otherwise try to keep global Y up, or workpiece local Y up
+                up.set(0, 1, 0).applyQuaternion(quaternion);
+            }
+
+            camera.position.copy(pos);
+            camera.up.copy(up);
+            controls.target.copy(target);
+            controls.update();
+            
+            document.getElementById('tp-screen').innerHTML = `VIEW: WORKPIECE ${axis}${isOpposite ? '-' : '+'}`;
+        }
+
+        function focusWorkpiece() {
+            if (!uploadedModel) {
+                document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: NO WORKPIECE LOADED.</span>`;
+                return;
+            }
+            const box = new THREE.Box3().setFromObject(uploadedModel);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            controls.target.copy(center);
+            controls.update();
+            document.getElementById('tp-screen').innerHTML = `CAMERA FOCUSED ON WORKPIECE.`;
+        }
+
+        document.getElementById('btn-wp-view-x').addEventListener('click', () => setWorkpieceView('X'));
+        document.getElementById('btn-wp-view-x-opp').addEventListener('click', () => setWorkpieceView('X', true));
+        document.getElementById('btn-wp-view-y').addEventListener('click', () => setWorkpieceView('Y'));
+        document.getElementById('btn-wp-view-y-opp').addEventListener('click', () => setWorkpieceView('Y', true));
+        document.getElementById('btn-wp-view-z').addEventListener('click', () => setWorkpieceView('Z'));
+        document.getElementById('btn-wp-view-z-opp').addEventListener('click', () => setWorkpieceView('Z', true));
+        document.getElementById('btn-focus-wp').addEventListener('click', focusWorkpiece);
+
+        document.getElementById('btn-view-x').addEventListener('click', () => {
+            setView(new THREE.Vector3(distance, 8, 0));
+        });
+        document.getElementById('btn-view-x-opp').addEventListener('click', () => {
+            setView(new THREE.Vector3(-distance, 8, 0));
+        });
+        document.getElementById('btn-view-y').addEventListener('click', () => {
+            // Y view in CAD is often Top view, but here Y is up.
+            // User said X and Y are skewed. Let's make Y view look from Z axis.
+            setView(new THREE.Vector3(0, 8, distance));
+        });
+        document.getElementById('btn-view-y-opp').addEventListener('click', () => {
+            setView(new THREE.Vector3(0, 8, -distance));
+        });
+        document.getElementById('btn-view-z').addEventListener('click', () => {
+            // Z view (Top view)
+            camera.position.set(0, distance, 0);
+            camera.up.set(0, 0, -1); // Looking down, Z should be "up" on screen
+            controls.target.copy(targetCenter);
+            controls.update();
+        });
+        document.getElementById('btn-view-z-opp').addEventListener('click', () => {
+            // Z' view (Bottom view)
+            camera.position.set(0, -distance, 0);
+            camera.up.set(0, 0, 1);
+            controls.target.copy(targetCenter);
+            controls.update();
+        });
+        document.getElementById('btn-view-i').addEventListener('click', () => {
+            setView(new THREE.Vector3(16, 16, 16));
+        });
+    }
+
+    function onWindowResize() {
+        const container = document.getElementById('canvas-container');
+        if (!container || container.clientWidth === 0) return;
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    /* ================= 构建六轴机器人模型 ================= */
+    function buildRobot() {
+        const matBody = new THREE.MeshStandardMaterial({ color: 0xe6e9eb, roughness: 0.3, metalness: 0.2 }); // ABB 浅灰/白
+        const matJoint = new THREE.MeshStandardMaterial({ color: 0x2a2d34, roughness: 0.7, metalness: 0.6 }); // 深灰/黑
+        const matMotor = new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: 0.8, metalness: 0.4 }); // 电机黑
+        const matTool = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.8 });
+        const matAccent = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.4, metalness: 0.3 }); // 红色点缀
+
+        robotBase = new THREE.Group();
+        scene.add(robotBase);
+
+        // Base (Fixed) - 底座中心到 J1: 5.1
+        const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 1.0, 32), matBody);
+        baseMesh.position.y = 0.5;
+        robotBase.add(baseMesh);
+        
+        const basePillar = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 4.1, 32), matBody);
+        basePillar.position.y = 1.0 + 4.1 / 2;
+        robotBase.add(basePillar);
+
+        // J1 (绕 Y 轴旋转)
+        const j1 = new THREE.Group();
+        j1.position.set(0, 5.1, 0);
+        robotBase.add(j1);
+        
+        const j1Base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 1.2, 32), matBody);
+        j1Base.position.y = 0.6;
+        j1.add(j1Base);
+        
+        // L1 (J1 到 J2: 4.37)
+        const l1Mesh = new THREE.Mesh(new THREE.BoxGeometry(1.1, 3.17, 1.2), matBody);
+        l1Mesh.position.y = 1.2 + 3.17 / 2;
+        j1.add(l1Mesh);
+        joints.push({ group: j1, axis: 'y', min: -Math.PI, max: Math.PI, name: 'J1' });
+
+        // J2 (绕 Z 轴旋转)
+        const j2 = new THREE.Group();
+        j2.position.set(0, 4.37, 0); // Top of L1
+        j1.add(j2);
+        
+        const j2Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.6, 32).rotateX(Math.PI/2), matJoint);
+        j2.add(j2Mesh);
+        
+        const j2Motor = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 32).rotateX(Math.PI/2), matMotor);
+        j2Motor.position.set(0, 0, 1.2);
+        j2.add(j2Motor);
+
+        // L2 (J2 到 J3: 4.68)
+        const l2Shape = new THREE.Shape();
+        l2Shape.moveTo(-0.55, 0);
+        l2Shape.lineTo(0.55, 0);
+        l2Shape.lineTo(0.4, 4.68);
+        l2Shape.lineTo(-0.4, 4.68);
+        l2Shape.lineTo(-0.55, 0);
+        const extrudeSettings = { depth: 0.8, bevelEnabled: true, bevelSegments: 2, steps: 1, bevelSize: 0.04, bevelThickness: 0.04 };
+        const l2Geo = new THREE.ExtrudeGeometry(l2Shape, extrudeSettings);
+        l2Geo.center();
+        const l2Mesh = new THREE.Mesh(l2Geo, matBody);
+        l2Mesh.position.set(0, 4.68 / 2, 0.4); // Offset in Z
+        j2.add(l2Mesh);
+        joints.push({ group: j2, axis: 'z', min: -Math.PI/2, max: Math.PI/2, name: 'J2' });
+
+        // J3 (绕 Z 轴旋转)
+        const j3 = new THREE.Group();
+        j3.position.set(0, 4.68, 0.4); // Top of L2
+        j2.add(j3);
+        
+        const j3Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.3, 32).rotateX(Math.PI/2), matJoint);
+        j3.add(j3Mesh);
+        
+        const j3Motor = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.0, 32).rotateX(Math.PI/2), matMotor);
+        j3Motor.position.set(0, 0, -1.15);
+        j3.add(j3Motor);
+
+        // L3 (J3 到 J4: 2.1)
+        const l3Base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.8), matBody);
+        l3Base.position.set(0.3, 0, -0.4);
+        j3.add(l3Base);
+        
+        const l3Ext = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.55, 2.1, 32).rotateZ(Math.PI/2), matBody);
+        l3Ext.position.set(2.1 / 2, 0, -0.4);
+        j3.add(l3Ext);
+        joints.push({ group: j3, axis: 'z', min: -Math.PI/1.5, max: Math.PI/1.5, name: 'J3' });
+
+        // J4 (绕 X 轴旋转)
+        const j4 = new THREE.Group();
+        j4.position.set(2.1, 0, -0.4); // End of L3
+        j3.add(j4);
+        
+        const j4Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.0, 32).rotateZ(Math.PI/2), matJoint);
+        j4.add(j4Mesh);
+        
+        // L4 (J4 到 J5: 2.1)
+        const l4Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 2.1, 32).rotateZ(Math.PI/2), matBody);
+        l4Mesh.position.set(2.1 / 2, 0, 0);
+        j4.add(l4Mesh);
+        joints.push({ group: j4, axis: 'x', min: -Math.PI, max: Math.PI, name: 'J4' });
+
+        // J5 (绕 Z 轴旋转)
+        const j5 = new THREE.Group();
+        j5.position.set(2.1, 0, 0); // End of L4
+        j4.add(j5);
+        
+        const j5Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 32).rotateX(Math.PI/2), matJoint);
+        j5.add(j5Mesh);
+        
+        // L5 (J5 到 J6: 1.57)
+        const l5Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 1.57, 32).rotateZ(Math.PI/2), matBody);
+        l5Mesh.position.set(1.57 / 2, 0, 0);
+        j5.add(l5Mesh);
+        joints.push({ group: j5, axis: 'z', min: -Math.PI, max: Math.PI, name: 'J5' });
+
+        // J6 (绕 X 轴旋转)
+        const j6 = new THREE.Group();
+        j6.position.set(1.57, 0, 0); // End of L5
+        j5.add(j6);
+        
+        // J6 到法兰端面: 0.7
+        const j6Mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 32).rotateZ(Math.PI/2), matJoint);
+        j6Mesh.position.set(0.25, 0, 0);
+        j6.add(j6Mesh);
+        
+        const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.2, 32).rotateZ(Math.PI/2), matJoint);
+        flange.position.set(0.5 + 0.1, 0, 0);
+        j6.add(flange);
+        joints.push({ group: j6, axis: 'x', min: -Math.PI*2, max: Math.PI*2, name: 'J6' });
+
+        // TCP (工具中心点 - 焊枪)
+        tcp = new THREE.Group();
+        tcp.position.set(0.7, 0, 0); // 从法兰盘末端开始
+        j6.add(tcp);
+        
+        // 焊枪建模精致一些
+        const torchBase = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.4, 16).rotateZ(Math.PI/2), matJoint);
+        torchBase.position.set(0.2, 0, 0);
+        tcp.add(torchBase);
+        
+        const torchNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 16).rotateZ(Math.PI/4), matTool);
+        torchNeck.position.set(0.55, -0.15, 0);
+        tcp.add(torchNeck);
+
+        const torchTipMesh = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 16).rotateZ(Math.PI/4), matAccent);
+        torchTipMesh.position.set(0.75, -0.35, 0);
+        tcp.add(torchTipMesh);
+        
+        // 真正的 TCP 尖端点
+        const tcpTip = new THREE.Object3D();
+        tcpTip.position.set(0.85, -0.45, 0);
+        tcp.add(tcpTip);
+        tcp.tip = tcpTip;
+
+        // 焊接特效光源
+        weldLight = new THREE.PointLight(0x88ccff, 0, 5);
+        weldLight.position.copy(tcpTip.position);
+        tcp.add(weldLight);
+    }
+
+    /* ================= UI 绑定与正向运动学 ================= */
+    function initUI() {
+        const jcDiv = document.getElementById('joint-controls');
+        jcDiv.innerHTML = '';
+        joints.forEach((j, index) => {
+            const row = document.createElement('div');
+            row.className = 'row';
+            row.style.justifyContent = 'center';
+            row.style.gap = '10px';
+            
+            const btnMinus = document.createElement('button');
+            btnMinus.innerText = '-';
+            btnMinus.style.flex = '0 0 40px';
+            btnMinus.style.fontSize = '18px';
+            
+            const label = document.createElement('label');
+            label.innerText = j.name;
+            label.style.width = '30px';
+            label.style.textAlign = 'center';
+
+            const inputAngle = document.createElement('input');
+            inputAngle.type = 'number';
+            inputAngle.step = '0.1';
+            inputAngle.style.width = '70px';
+            inputAngle.style.textAlign = 'right';
+            inputAngle.value = (j.group.rotation[j.axis] * 180 / Math.PI).toFixed(1);
+            j.inputElement = inputAngle;
+            
+            inputAngle.addEventListener('change', (e) => {
+                if(isRunning) return;
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) val = 0;
+                let rad = val * Math.PI / 180;
+                rad = Math.max(j.min, Math.min(j.max, rad));
+                j.group.rotation[j.axis] = rad;
+                e.target.value = (rad * 180 / Math.PI).toFixed(1);
+                updateScreen();
+            });
+            
+            const btnPlus = document.createElement('button');
+            btnPlus.innerText = '+';
+            btnPlus.style.flex = '0 0 40px';
+            btnPlus.style.fontSize = '18px';
+
+            let jogInterval;
+            const jog = (direction) => {
+                if(isRunning) return;
+                const step = 0.05; // radians
+                let newAngle = j.group.rotation[j.axis] + direction * step;
+                newAngle = Math.max(j.min, Math.min(j.max, newAngle));
+                j.group.rotation[j.axis] = newAngle;
+                updateScreen();
+            };
+
+            const startJog = (dir) => {
+                jog(dir);
+                jogInterval = setInterval(() => jog(dir), 50);
+            };
+            const stopJog = () => {
+                clearInterval(jogInterval);
+            };
+
+            btnMinus.addEventListener('mousedown', () => startJog(-1));
+            btnMinus.addEventListener('mouseup', stopJog);
+            btnMinus.addEventListener('mouseleave', stopJog);
+            btnMinus.addEventListener('touchstart', (e) => { e.preventDefault(); startJog(-1); });
+            btnMinus.addEventListener('touchend', stopJog);
+
+            btnPlus.addEventListener('mousedown', () => startJog(1));
+            btnPlus.addEventListener('mouseup', stopJog);
+            btnPlus.addEventListener('mouseleave', stopJog);
+            btnPlus.addEventListener('touchstart', (e) => { e.preventDefault(); startJog(1); });
+            btnPlus.addEventListener('touchend', stopJog);
+
+            row.appendChild(btnMinus);
+            row.appendChild(label);
+            row.appendChild(inputAngle);
+            row.appendChild(btnPlus);
+            jcDiv.appendChild(row);
+        });
+
+        // 笛卡尔控制面板
+        const ccDiv = document.getElementById('cartesian-controls');
+        ccDiv.innerHTML = '';
+        cartesianAxes.forEach((ax) => {
+            const row = document.createElement('div');
+            row.className = 'row';
+            row.style.justifyContent = 'center';
+            row.style.gap = '10px';
+            
+            const btnMinus = document.createElement('button');
+            btnMinus.innerText = '-';
+            btnMinus.style.flex = '0 0 40px';
+            btnMinus.style.fontSize = '18px';
+            
+            const label = document.createElement('label');
+            label.innerText = ax.name;
+            label.style.width = '30px';
+            label.style.textAlign = 'center';
+
+            const inputPos = document.createElement('input');
+            inputPos.type = 'number';
+            inputPos.step = '0.01';
+            inputPos.style.width = '70px';
+            inputPos.style.textAlign = 'right';
+            ax.inputElement = inputPos;
+            
+            inputPos.addEventListener('change', (e) => {
+                if(isRunning) return;
+                let val = parseFloat(e.target.value);
+                if (isNaN(val)) val = 0;
+                
+                const currentPos = new THREE.Vector3();
+                tcp.tip.getWorldPosition(currentPos);
+                currentPos[ax.axis] = val * ax.sign;
+                
+                if(!solveIK(currentPos)) {
+                    // 如果不可达，恢复UI显示为当前实际位置
+                    updateScreen();
+                }
+            });
+            
+            const btnPlus = document.createElement('button');
+            btnPlus.innerText = '+';
+            btnPlus.style.flex = '0 0 40px';
+            btnPlus.style.fontSize = '18px';
+
+            let jogInterval;
+            const jog = (direction) => {
+                if(isRunning) return;
+                const step = 0.05; // 笛卡尔步长 (5cm)
+                const currentPos = new THREE.Vector3();
+                tcp.tip.getWorldPosition(currentPos);
+                currentPos[ax.axis] += direction * step * ax.sign;
+                
+                if(!solveIK(currentPos)) {
+                    // 到达极限，停止jog
+                    stopJog();
+                }
+            };
+
+            const startJog = (dir) => {
+                jog(dir);
+                jogInterval = setInterval(() => jog(dir), 50);
+            };
+            const stopJog = () => {
+                clearInterval(jogInterval);
+            };
+
+            btnMinus.addEventListener('mousedown', () => startJog(-1));
+            btnMinus.addEventListener('mouseup', stopJog);
+            btnMinus.addEventListener('mouseleave', stopJog);
+            btnMinus.addEventListener('touchstart', (e) => { e.preventDefault(); startJog(-1); });
+            btnMinus.addEventListener('touchend', stopJog);
+
+            btnPlus.addEventListener('mousedown', () => startJog(1));
+            btnPlus.addEventListener('mouseup', stopJog);
+            btnPlus.addEventListener('mouseleave', stopJog);
+            btnPlus.addEventListener('touchstart', (e) => { e.preventDefault(); startJog(1); });
+            btnPlus.addEventListener('touchend', stopJog);
+
+            row.appendChild(btnMinus);
+            row.appendChild(label);
+            row.appendChild(inputPos);
+            row.appendChild(btnPlus);
+            ccDiv.appendChild(row);
+        });
+
+        // 添加 J6 控制到笛卡尔面板（仅在姿态保持模式下显示）
+        const j6Row = document.createElement('div');
+        j6Row.className = 'row';
+        j6Row.id = 'posture-j6-control';
+        j6Row.style.justifyContent = 'center';
+        j6Row.style.gap = '10px';
+        j6Row.style.display = 'none'; // 默认隐藏
+        
+        const btnMinusJ6 = document.createElement('button');
+        btnMinusJ6.innerText = '-';
+        btnMinusJ6.style.flex = '0 0 40px';
+        btnMinusJ6.style.fontSize = '18px';
+        
+        const labelJ6 = document.createElement('label');
+        labelJ6.innerText = 'J6';
+        labelJ6.style.width = '30px';
+        labelJ6.style.textAlign = 'center';
+
+        const inputPosJ6 = document.createElement('input');
+        inputPosJ6.type = 'number';
+        inputPosJ6.step = '0.1';
+        inputPosJ6.style.width = '70px';
+        inputPosJ6.style.textAlign = 'right';
+        inputPosJ6.value = (joints[5].group.rotation[joints[5].axis] * 180 / Math.PI).toFixed(1);
+        joints[5].inputElementCartesian = inputPosJ6;
+        
+        inputPosJ6.addEventListener('change', (e) => {
+            if(isRunning) return;
+            let val = parseFloat(e.target.value);
+            if (isNaN(val)) val = 0;
+            let rad = val * Math.PI / 180;
+            rad = Math.max(joints[5].min, Math.min(joints[5].max, rad));
+            joints[5].group.rotation[joints[5].axis] = rad;
+            e.target.value = (rad * 180 / Math.PI).toFixed(1);
+            updateScreen();
+        });
+        
+        const btnPlusJ6 = document.createElement('button');
+        btnPlusJ6.innerText = '+';
+        btnPlusJ6.style.flex = '0 0 40px';
+        btnPlusJ6.style.fontSize = '18px';
+
+        let jogIntervalJ6;
+        const jogJ6 = (direction) => {
+            if(isRunning) return;
+            const step = 0.05; // radians
+            let newAngle = joints[5].group.rotation[joints[5].axis] + direction * step;
+            newAngle = Math.max(joints[5].min, Math.min(joints[5].max, newAngle));
+            joints[5].group.rotation[joints[5].axis] = newAngle;
+            updateScreen();
+        };
+
+        const startJogJ6 = (dir) => {
+            jogJ6(dir);
+            jogIntervalJ6 = setInterval(() => jogJ6(dir), 50);
+        };
+        const stopJogJ6 = () => {
+            clearInterval(jogIntervalJ6);
+        };
+
+        btnMinusJ6.addEventListener('mousedown', () => startJogJ6(-1));
+        btnMinusJ6.addEventListener('mouseup', stopJogJ6);
+        btnMinusJ6.addEventListener('mouseleave', stopJogJ6);
+        btnMinusJ6.addEventListener('touchstart', (e) => { e.preventDefault(); startJogJ6(-1); });
+        btnMinusJ6.addEventListener('touchend', stopJogJ6);
+
+        btnPlusJ6.addEventListener('mousedown', () => startJogJ6(1));
+        btnPlusJ6.addEventListener('mouseup', stopJogJ6);
+        btnPlusJ6.addEventListener('mouseleave', stopJogJ6);
+        btnPlusJ6.addEventListener('touchstart', (e) => { e.preventDefault(); startJogJ6(1); });
+        btnPlusJ6.addEventListener('touchend', stopJogJ6);
+
+        j6Row.appendChild(btnMinusJ6);
+        j6Row.appendChild(labelJ6);
+        j6Row.appendChild(inputPosJ6);
+        j6Row.appendChild(btnPlusJ6);
+        ccDiv.appendChild(j6Row);
+
+        // 绑定模式切换
+        document.querySelectorAll('input[name="jog-mode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const j6Control = document.getElementById('posture-j6-control');
+                if (e.target.value === 'joint') {
+                    document.getElementById('joint-controls').style.display = 'block';
+                    document.getElementById('cartesian-controls').style.display = 'none';
+                    if (j6Control) j6Control.style.display = 'none';
+                } else {
+                    document.getElementById('joint-controls').style.display = 'none';
+                    document.getElementById('cartesian-controls').style.display = 'block';
+                    
+                    if (e.target.value === 'posture') {
+                        if (j6Control) j6Control.style.display = 'flex';
+                        // 切换到姿态保持时，立即应用姿态约束
+                        joints[3].group.rotation.x = 0; // J4
+                        joints[4].group.rotation.z = -Math.PI/2 - joints[1].group.rotation.z - joints[2].group.rotation.z; // J5
+                        // 不再重置 J6，允许其自由旋转
+                        joints[3].group.updateMatrixWorld(true);
+                        joints[4].group.updateMatrixWorld(true);
+                        joints[5].group.updateMatrixWorld(true);
+                    } else {
+                        if (j6Control) j6Control.style.display = 'none';
+                    }
+                    updateScreen(); // 确保切换时数据最新
+                }
+            });
+        });
+
+        // 全局速度
+        document.getElementById('global-speed').addEventListener('input', (e) => {
+            document.getElementById('speed-val').innerText = e.target.value + '%';
+            runState.speed = parseFloat(e.target.value) / 100;
+        });
+
+        // 按钮事件
+        document.getElementById('btn-save-point').addEventListener('click', savePoint);
+        document.getElementById('btn-insert-point').addEventListener('click', () => {
+            const index = (selectedPointIndex !== -1) ? selectedPointIndex + 1 : waypoints.length;
+            insertPointPrompt(index);
+        });
+        document.getElementById('btn-insert-cmd').addEventListener('click', () => {
+            const cmd = document.getElementById('cmd-select').value;
+            const index = (selectedPointIndex !== -1) ? selectedPointIndex + 1 : waypoints.length;
+            waypoints.splice(index, 0, { type: 'cmd', cmd: cmd });
+            if (selectedPointIndex !== -1) selectedPointIndex++;
+            renderPointList();
+            document.getElementById('tp-screen').innerHTML = `COMMAND ${cmd} INSERTED.`;
+        });
+        document.getElementById('btn-clear-point').addEventListener('click', clearPoints);
+        document.getElementById('btn-reset-pos').addEventListener('click', resetPosition);
+        document.getElementById('btn-download-prog').addEventListener('click', downloadProgram);
+        document.getElementById('btn-import-prog').addEventListener('click', () => {
+            document.getElementById('import-prog-file').click();
+        });
+        document.getElementById('import-prog-file').addEventListener('change', importProgram);
+        document.getElementById('btn-run').addEventListener('click', startRun);
+        document.getElementById('btn-stop').addEventListener('click', stopRun);
+        
+        document.getElementById('toggle-traj').addEventListener('change', (e) => {
+            showTrajectory = e.target.checked;
+            trajLine.visible = showTrajectory;
+        });
+
+        document.getElementById('weave-amplitude').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            runState.weaveAmplitude = val / 10;
+            document.getElementById('weave-val').innerText = runState.weaveAmplitude.toFixed(1);
+        });
+
+        // 模型上传与控制
+        const fileInput = document.getElementById('model-upload');
+        const statusDiv = document.getElementById('model-status');
+        const controlsDiv = document.getElementById('model-controls');
+        const scaleInput = document.getElementById('model-scale');
+        const btnModeTranslate = document.getElementById('btn-mode-translate');
+        const btnModeRotate = document.getElementById('btn-mode-rotate');
+        const btnModeScale = document.getElementById('btn-mode-scale');
+        const btnLockModel = document.getElementById('btn-lock-model');
+        const btnToggleAxes = document.getElementById('btn-toggle-axes');
+        const btnRemove = document.getElementById('btn-remove-model');
+        const posXInput = document.getElementById('model-pos-x');
+        const posYInput = document.getElementById('model-pos-y');
+        const posZInput = document.getElementById('model-pos-z');
+
+        function updateModelPosition() {
+            if (!uploadedModel) return;
+            let x = parseFloat(posXInput.value) || 0;
+            let y = parseFloat(posYInput.value) || 0;
+            let z = parseFloat(posZInput.value) || 0;
+            
+            // 网格吸附逻辑
+            if (document.getElementById('toggle-grid-snap').checked) {
+                const snap = 0.5;
+                x = Math.round(x / snap) * snap;
+                y = Math.round(y / snap) * snap;
+                z = Math.round(z / snap) * snap;
+                posXInput.value = x.toFixed(2);
+                posYInput.value = y.toFixed(2);
+                posZInput.value = z.toFixed(2);
+            }
+
+            uploadedModel.position.x = x;
+            uploadedModel.position.z = -y;
+            uploadedModel.position.y = z;
+        }
+
+        posXInput.addEventListener('input', updateModelPosition);
+        posYInput.addEventListener('input', updateModelPosition);
+        posZInput.addEventListener('input', updateModelPosition);
+
+        function processModel(model) {
+            // 1. 移除地平面 (Heuristic: flat meshes at the bottom)
+            const meshesToRemove = [];
+            
+            // First pass to get overall bounding box
+            const overallBox = new THREE.Box3().setFromObject(model);
+            const overallSize = overallBox.getSize(new THREE.Vector3());
+            const bottomY = overallBox.min.y;
+            const overallArea = overallSize.x * overallSize.z;
+
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    const box = new THREE.Box3().setFromObject(child);
+                    const size = box.getSize(new THREE.Vector3());
+                    const height = size.y;
+                    const area = size.x * size.z;
+                    
+                    // Heuristic: If it's very flat and near the bottom, or covers a large area relative to the model
+                    const isFlat = height < overallSize.y * 0.02 || height < 0.05;
+                    const isAtBottom = Math.abs(box.min.y - bottomY) < 0.05;
+                    const isLarge = area > overallArea * 0.7;
+                    const hasGroundName = /ground|floor|plane|地面|地板/i.test(child.name);
+
+                    if ((isFlat && isAtBottom && isLarge) || hasGroundName) {
+                        meshesToRemove.push(child);
+                    }
+                }
+            });
+
+            meshesToRemove.forEach(mesh => {
+                if (mesh.parent) mesh.parent.remove(mesh);
+            });
+
+            // 2. 居中并放置在地面上
+            const box = new THREE.Box3().setFromObject(model);
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            
+            // Move model so its center (x,z) is at 0 and its bottom is at 0
+            model.position.x = -center.x;
+            model.position.z = -center.z;
+            model.position.y = -box.min.y;
+
+            // 3. 包装在组中以便变换
+            const group = new THREE.Group();
+            group.add(model);
+            
+            // 4. 添加坐标系 (在模型底部中心)
+            modelAxes = new THREE.AxesHelper(5);
+            group.add(modelAxes);
+            const axesVisible = document.getElementById('btn-toggle-axes').classList.contains('active');
+            modelAxes.visible = axesVisible;
+            if (globalAxesHelper) globalAxesHelper.visible = axesVisible;
+
+            return group;
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const filename = file.name.toLowerCase();
+            
+            statusDiv.style.display = 'inline-block';
+            statusDiv.innerText = '加载中...';
+            
+            if (uploadedModel) {
+                scene.remove(uploadedModel);
+                transformControl.detach();
+                uploadedModel = null;
+                modelAxes = null;
+            }
+
+            const reader = new FileReader();
+            reader.onerror = (event) => {
+                console.error(event.target.error);
+                statusDiv.innerText = '读取文件失败';
+            };
+
+            if (filename.endsWith('.zip')) {
+                reader.onload = async (event) => {
+                    try {
+                        const zip = await JSZip.loadAsync(event.target.result);
+                        const files = Object.keys(zip.files);
+                        const objFile = files.find(f => f.toLowerCase().endsWith('.obj'));
+                        const mtlFile = files.find(f => f.toLowerCase().endsWith('.mtl'));
+                        
+                        if (!objFile) {
+                            statusDiv.innerText = 'ZIP中未找到.obj文件';
+                            return;
+                        }
+
+                        let materials = null;
+                        if (mtlFile) {
+                            const mtlContent = await zip.files[mtlFile].async('string');
+                            
+                            const textureFiles = files.filter(f => /\.(jpg|jpeg|png|tga)$/i.test(f));
+                            const textureMap = {};
+                            for (const tf of textureFiles) {
+                                const blob = await zip.files[tf].async('blob');
+                                textureMap[tf.split('/').pop()] = URL.createObjectURL(blob);
+                            }
+
+                            const manager = new THREE.LoadingManager();
+                            manager.setURLModifier((url) => {
+                                const name = url.split('/').pop();
+                                if (textureMap[name]) return textureMap[name];
+                                return url;
+                            });
+
+                            const mtlLoader = new THREE.MTLLoader(manager);
+                            materials = mtlLoader.parse(mtlContent);
+                            materials.preload();
+                        }
+
+                        const objContent = await zip.files[objFile].async('string');
+                        const objLoader = new THREE.OBJLoader();
+                        if (materials) objLoader.setMaterials(materials);
+                        
+                        const model = objLoader.parse(objContent);
+                        uploadedModel = processModel(model);
+                        
+                        uploadedModel.position.set(5, 0, 0);
+                        posXInput.value = 5;
+                        posYInput.value = 0;
+                        posZInput.value = 0;
+                        scene.add(uploadedModel);
+                        transformControl.attach(uploadedModel);
+                        transformControl.visible = document.getElementById('btn-toggle-axes').classList.contains('active');
+                        
+                        statusDiv.innerText = `已加载: ${file.name}`;
+                        controlsDiv.style.display = 'flex';
+                        scaleInput.value = 1;
+                        btnLockModel.classList.remove('active');
+                        btnLockModel.innerText = '未锁定';
+                        transformControl.enabled = true;
+                    } catch (err) {
+                        console.error(err);
+                        statusDiv.innerText = 'ZIP解析失败: ' + err.message;
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.onload = (event) => {
+                    const contents = event.target.result;
+                    try {
+                        if (filename.endsWith('.stl')) {
+                            const loader = new THREE.STLLoader();
+                            const geometry = loader.parse(contents);
+                            geometry.center();
+                            geometry.computeVertexNormals();
+                            const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 });
+                            const mesh = new THREE.Mesh(geometry, material);
+                            uploadedModel = processModel(mesh);
+                        } else if (filename.endsWith('.obj')) {
+                            const loader = new THREE.OBJLoader();
+                            const model = loader.parse(contents);
+                            model.traverse((child) => {
+                                if (child.isMesh) {
+                                    child.material = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.5 });
+                                }
+                            });
+                            uploadedModel = processModel(model);
+                        } else if (filename.endsWith('.gltf') || filename.endsWith('.glb')) {
+                            const loader = new THREE.GLTFLoader();
+                            loader.parse(contents, '', (gltf) => {
+                                uploadedModel = processModel(gltf.scene);
+                                uploadedModel.position.set(5, 0, 0);
+                                posXInput.value = 5;
+                                posYInput.value = 0;
+                                posZInput.value = 0;
+                                scene.add(uploadedModel);
+                                transformControl.attach(uploadedModel);
+                                transformControl.visible = document.getElementById('btn-toggle-axes').classList.contains('active');
+                                statusDiv.innerText = `已加载: ${file.name}`;
+                                controlsDiv.style.display = 'flex';
+                                scaleInput.value = 1;
+                                btnLockModel.classList.remove('active');
+                                btnLockModel.innerText = '未锁定';
+                                transformControl.enabled = true;
+                            }, (error) => {
+                                console.error(error);
+                                statusDiv.innerText = '加载失败: ' + error.message;
+                            });
+                            return;
+                        }
+
+                        if (uploadedModel) {
+                            uploadedModel.position.set(5, 0, 0);
+                            posXInput.value = 5;
+                            posYInput.value = 0;
+                            posZInput.value = 0;
+                            scene.add(uploadedModel);
+                            transformControl.attach(uploadedModel);
+                            transformControl.visible = document.getElementById('btn-toggle-axes').classList.contains('active');
+                            statusDiv.innerText = `已加载: ${file.name}`;
+                            controlsDiv.style.display = 'flex';
+                            scaleInput.value = 1;
+                            btnLockModel.classList.remove('active');
+                            btnLockModel.innerText = '未锁定';
+                            transformControl.enabled = true;
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        statusDiv.innerText = '加载失败: ' + err.message;
+                    }
+                };
+                if (filename.endsWith('.glb') || filename.endsWith('.stl')) {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            }
+        });
+
+        btnLockModel.addEventListener('click', () => {
+            if (!uploadedModel) return;
+            const isLocked = btnLockModel.classList.toggle('active');
+            btnLockModel.innerText = isLocked ? '已锁定' : '未锁定';
+            transformControl.enabled = !isLocked;
+            if (isLocked) transformControl.detach();
+            else transformControl.attach(uploadedModel);
+        });
+
+        btnToggleAxes.addEventListener('click', () => {
+            const isVisible = btnToggleAxes.classList.toggle('active');
+            if (modelAxes) modelAxes.visible = isVisible;
+            if (globalAxesHelper) globalAxesHelper.visible = isVisible;
+            // 同时切换变换控制器的可见性，这通常是用户认为的“工件上的坐标”
+            if (transformControl) transformControl.visible = isVisible;
+        });
+
+        scaleInput.addEventListener('input', (e) => {
+            if (uploadedModel) {
+                const s = parseFloat(e.target.value);
+                if (!isNaN(s) && s > 0) {
+                    uploadedModel.scale.set(s, s, s);
+                }
+            }
+        });
+
+        function updateModeButtons(activeBtn) {
+            btnModeTranslate.classList.remove('active');
+            btnModeRotate.classList.remove('active');
+            btnModeScale.classList.remove('active');
+            activeBtn.classList.add('active');
+        }
+
+        btnModeTranslate.addEventListener('click', () => {
+            if (btnLockModel.classList.contains('active')) return;
+            transformControl.setMode('translate');
+            updateModeButtons(btnModeTranslate);
+        });
+
+        btnModeRotate.addEventListener('click', () => {
+            if (btnLockModel.classList.contains('active')) return;
+            transformControl.setMode('rotate');
+            updateModeButtons(btnModeRotate);
+        });
+
+        btnModeScale.addEventListener('click', () => {
+            if (btnLockModel.classList.contains('active')) return;
+            transformControl.setMode('scale');
+            updateModeButtons(btnModeScale);
+        });
+
+        btnRemove.addEventListener('click', () => {
+            if (uploadedModel) {
+                scene.remove(uploadedModel);
+                transformControl.detach();
+                uploadedModel = null;
+                modelAxes = null;
+                statusDiv.innerText = '未加载模型';
+                statusDiv.style.display = 'none';
+                controlsDiv.style.display = 'none';
+                fileInput.value = '';
+            }
+        });
+    }
+
+    // 更新示教器屏幕显示
+    function updateScreen() {
+        const pos = new THREE.Vector3();
+        tcp.tip.getWorldPosition(pos);
+        let html = `TCP POS:<br>X: ${(pos.x).toFixed(2)}  Y: ${(pos.z * -1).toFixed(2)}  Z: ${(pos.y).toFixed(2)}<br><br>JOINTS:<br>`;
+        joints.forEach(j => {
+            const deg = (j.group.rotation[j.axis] * 180 / Math.PI).toFixed(1);
+            html += `${j.name}: ${deg}° `;
+            if (j.inputElement && document.activeElement !== j.inputElement) {
+                j.inputElement.value = deg;
+            }
+        });
+        
+        cartesianAxes.forEach(ax => {
+            if (ax.inputElement && document.activeElement !== ax.inputElement) {
+                ax.inputElement.value = (pos[ax.axis] * ax.sign).toFixed(2);
+            }
+        });
+        
+        if (joints[5].inputElementCartesian && document.activeElement !== joints[5].inputElementCartesian) {
+            joints[5].inputElementCartesian.value = (joints[5].group.rotation[joints[5].axis] * 180 / Math.PI).toFixed(1);
+        }
+        
+        document.getElementById('status-panel').innerHTML = html;
+    }
+
+    // 更新滑块 UI 以匹配当前关节角度
+    function syncSliders() {
+        updateScreen();
+    }
+
+    // 规范化角度到 [-PI, PI]，使用公式 ((angle + PI) % 2PI) - PI
+    function normalizeAngle(angle) {
+        // JS 中 % 运算符对负数会保留负号，因此需要额外处理以严格匹配数学公式
+        return ((angle + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    }
+
+    /* ================= 逆向运动学 (CCD IK 算法) ================= */
+    // 针对 1D 旋转关节优化的 CCD 算法
+    function solveIK(targetWorldPos) {
+        const jogMode = document.querySelector('input[name="jog-mode"]:checked').value;
+        const maxIters = 100; // 保持 100 次迭代，确保能收敛
+        const tolerance = 0.001;
+        let tcpWorldPos = new THREE.Vector3();
+
+        // 确保初始姿态正确
+        if (jogMode === 'posture') {
+            joints[3].group.rotation.x = 0;
+            joints[4].group.rotation.z = -Math.PI/2 - joints[1].group.rotation.z - joints[2].group.rotation.z;
+            joints[3].group.updateMatrixWorld(true);
+            joints[4].group.updateMatrixWorld(true);
+        }
+
+        for (let iter = 0; iter < maxIters; iter++) {
+            tcp.tip.getWorldPosition(tcpWorldPos);
+            if (tcpWorldPos.distanceTo(targetWorldPos) < tolerance) break;
+
+            // 如果是姿态保持模式，只迭代前三个关节，并固定后三个关节
+            let startJoint = joints.length - 1;
+            if (jogMode === 'posture') {
+                startJoint = 2; // 只迭代 J3, J2, J1
+            }
+
+            // 从末端关节向基座遍历
+            for (let i = startJoint; i >= 0; i--) {
+                const joint = joints[i];
+                
+                let currentEffectorPos = new THREE.Vector3();
+                let currentTargetPos = targetWorldPos.clone();
+                
+                if (jogMode === 'posture') {
+                    if (i === 0) {
+                        // 对于 J1 (绕 Y 轴)，TCP 随 J1 刚性旋转，直接使用 TCP 作为末端执行器
+                        tcp.tip.getWorldPosition(currentEffectorPos);
+                    } else {
+                        // 对于 J2 和 J3 (绕 Z 轴)，由于 J5 的补偿旋转，TCP 实际上是随 J5 平移的。
+                        // 因此，使用 J5 作为虚拟末端执行器，并减去当前的 TCP 偏移量。
+                        let j5Pos = new THREE.Vector3();
+                        joints[4].group.getWorldPosition(j5Pos);
+                        let tcpPos = new THREE.Vector3();
+                        tcp.tip.getWorldPosition(tcpPos);
+                        
+                        let offset = tcpPos.clone().sub(j5Pos);
+                        
+                        currentEffectorPos.copy(j5Pos);
+                        currentTargetPos.sub(offset);
+                    }
+                } else {
+                    tcp.tip.getWorldPosition(currentEffectorPos);
+                }
+                
+                // 将目标点和当前执行器点转换到该关节的局部坐标系
+                const targetLocal = joint.group.worldToLocal(currentTargetPos.clone());
+                const effectorLocal = joint.group.worldToLocal(currentEffectorPos.clone());
+
+                // 投影到旋转平面 (例如，如果绕 Z 轴旋转，则投影到 XY 平面)
+                let targetVec, effectorVec;
+                if (joint.axis === 'z') {
+                    targetVec = new THREE.Vector2(targetLocal.x, targetLocal.y);
+                    effectorVec = new THREE.Vector2(effectorLocal.x, effectorLocal.y);
+                } else if (joint.axis === 'y') {
+                    // 修复 Y 轴旋转的符号问题：THREE.js 中绕 Y 轴旋转，X 轴向 -Z 轴方向旋转
+                    // 所以正确的 atan2 顺序应该是 atan2(x, z) 而不是 atan2(z, x)
+                    targetVec = new THREE.Vector2(targetLocal.z, targetLocal.x);
+                    effectorVec = new THREE.Vector2(effectorLocal.z, effectorLocal.x);
+                } else if (joint.axis === 'x') {
+                    targetVec = new THREE.Vector2(targetLocal.y, targetLocal.z);
+                    effectorVec = new THREE.Vector2(effectorLocal.y, effectorLocal.z);
+                }
+
+                // 如果投影向量太短，说明目标点在旋转轴上，跳过该关节
+                if (targetVec.lengthSq() < 0.00001 || effectorVec.lengthSq() < 0.00001) {
+                    continue;
+                }
+
+                targetVec.normalize();
+                effectorVec.normalize();
+
+                // 计算旋转角度
+                let angle = Math.atan2(targetVec.y, targetVec.x) - Math.atan2(effectorVec.y, effectorVec.x);
+                
+                // 规范化角度到 [-PI, PI]，防止出现 360 度的大跳跃
+                angle = normalizeAngle(angle);
+                
+                // 限制单次迭代的最大旋转角度，强制寻找最近解，防止关节乱转
+                // 适当放大腕部步长，防止在有Seed的情况下IK跟不上目标导致手臂乱扭
+                const maxStep = i >= 3 ? 0.02 : 0.05; 
+                if (angle > maxStep) angle = maxStep;
+                if (angle < -maxStep) angle = -maxStep;
+                
+                // 限制在关节范围内
+                let newAngle = joint.group.rotation[joint.axis] + angle;
+                newAngle = Math.max(joint.min, Math.min(joint.max, newAngle));
+                
+                joint.group.rotation[joint.axis] = newAngle;
+                joint.group.updateMatrixWorld(true);
+                
+                if (jogMode === 'posture') {
+                    // 强制更新姿态，保证 J5 垂直向下
+                    joints[3].group.rotation.x = 0; // J4
+                    joints[4].group.rotation.z = -Math.PI/2 - joints[1].group.rotation.z - joints[2].group.rotation.z; // J5
+                    
+                    joints[3].group.updateMatrixWorld(true);
+                }
+            }
+        }
+        
+        // 检查最终是否收敛
+        tcp.tip.getWorldPosition(tcpWorldPos);
+        const distance = tcpWorldPos.distanceTo(targetWorldPos);
+        
+        syncSliders();
+        
+        // 如果误差大于 5cm，认为不可达或陷入奇异点
+        if (distance > 0.05) {
+            return false;
+        }
+        return true;
+    }
+
+    /* ================= 轨迹规划与插补 ================= */
+    function renderPointList() {
+        const list = document.getElementById('point-list');
+        list.innerHTML = '';
+        waypoints.forEach((wp, index) => {
+            const li = document.createElement('li');
+            li.style.display = 'flex';
+            li.style.flexDirection = 'column';
+            li.style.gap = '5px';
+            li.style.padding = '8px';
+            li.style.borderBottom = '1px solid var(--border-color)';
+            li.style.cursor = 'pointer';
+            li.style.borderRadius = '8px';
+            li.style.transition = 'background 0.2s';
+            
+            if (index === selectedPointIndex) {
+                li.style.background = 'rgba(0, 123, 255, 0.15)';
+                li.style.border = '1px solid var(--accent-color)';
+            }
+
+            li.onclick = (e) => {
+                // 如果点击的是按钮或输入框，不触发选中
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                selectedPointIndex = (selectedPointIndex === index) ? -1 : index;
+                renderPointList();
+            };
+            
+            const topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.justifyContent = 'space-between';
+            topRow.style.alignItems = 'center';
+            
+            const label = document.createElement('span');
+            if (wp.type === 'cmd') {
+                const cmdSelect = document.createElement('select');
+                cmdSelect.style.fontSize = '11px';
+                cmdSelect.style.padding = '1px';
+                cmdSelect.style.borderRadius = '4px';
+                cmdSelect.style.background = 'var(--btn-bg)';
+                cmdSelect.style.color = '#007bff';
+                cmdSelect.style.border = '1px solid var(--border-color)';
+                cmdSelect.style.outline = 'none';
+                
+                const options = [
+                    { value: 'ARC_START', text: '起弧' },
+                    { value: 'WEAVE_START', text: '开始摆动' },
+                    { value: 'WEAVE_STOP', text: '停止摆动' },
+                    { value: 'ARC_STOP', text: '熄弧' },
+                    { value: 'WAIT', text: '等待' }
+                ];
+                
+                options.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt.value;
+                    o.innerText = opt.text;
+                    if (wp.cmd === opt.value) o.selected = true;
+                    cmdSelect.appendChild(o);
+                });
+                
+                cmdSelect.onchange = (e) => {
+                    waypoints[index].cmd = e.target.value;
+                    document.getElementById('tp-screen').innerHTML = `CMD ${index + 1} UPDATED TO ${e.target.value}.`;
+                };
+                
+                cmdSelect.onclick = (e) => e.stopPropagation();
+                
+                label.appendChild(document.createTextNode('CMD: '));
+                label.appendChild(cmdSelect);
+                label.style.color = '#007bff';
+            } else {
+                label.innerText = `P${index + 1}`;
+            }
+            label.style.fontWeight = 'bold';
+            
+            const btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex';
+            btnGroup.style.gap = '2px';
+            
+            if (wp.type !== 'cmd') {
+                const btnUpdate = document.createElement('button');
+                btnUpdate.innerText = '更新';
+                btnUpdate.style.padding = '2px 5px';
+                btnUpdate.style.fontSize = '12px';
+                btnUpdate.style.margin = '0';
+                btnUpdate.onclick = (e) => {
+                    e.stopPropagation();
+                    const pos = new THREE.Vector3();
+                    tcp.tip.getWorldPosition(pos);
+                    const jointAngles = joints.map(j => j.group.rotation[j.axis]);
+                    waypoints[index] = { ...waypoints[index], pos: pos.clone(), angles: [...jointAngles] };
+                    renderPointList();
+                    document.getElementById('tp-screen').innerHTML = `POINT P${index + 1} UPDATED.`;
+                };
+                btnGroup.appendChild(btnUpdate);
+            }
+            
+            const btnInsert = document.createElement('button');
+            btnInsert.innerText = '插入';
+            btnInsert.style.padding = '2px 5px';
+            btnInsert.style.fontSize = '12px';
+            btnInsert.style.margin = '0';
+            btnInsert.onclick = (e) => {
+                e.stopPropagation();
+                insertPointPrompt(index + 1);
+            };
+            
+            const selInsertCmd = document.createElement('select');
+            selInsertCmd.style.padding = '1px 2px';
+            selInsertCmd.style.fontSize = '11px';
+            selInsertCmd.style.margin = '0';
+            selInsertCmd.style.borderRadius = '4px';
+            selInsertCmd.style.background = 'var(--btn-bg)';
+            selInsertCmd.style.color = 'var(--text-color)';
+            selInsertCmd.style.border = '1px solid var(--border-color)';
+            selInsertCmd.style.width = '60px';
+            selInsertCmd.style.outline = 'none';
+            
+            const defaultOpt = document.createElement('option');
+            defaultOpt.text = '指令';
+            defaultOpt.value = '';
+            defaultOpt.disabled = true;
+            defaultOpt.selected = true;
+            selInsertCmd.appendChild(defaultOpt);
+            
+            const cmdOptions = [
+                { value: 'ARC_START', text: '起弧' },
+                { value: 'WEAVE_START', text: '摆弧' },
+                { value: 'WEAVE_STOP', text: '停摆' },
+                { value: 'ARC_STOP', text: '熄弧' },
+                { value: 'WAIT', text: '等待' }
+            ];
+            
+            cmdOptions.forEach(opt => {
+                const o = document.createElement('option');
+                o.value = opt.value;
+                o.innerText = opt.text;
+                selInsertCmd.appendChild(o);
+            });
+            
+            selInsertCmd.onchange = (e) => {
+                const cmd = e.target.value;
+                if (!cmd) return;
+                waypoints.splice(index + 1, 0, { type: 'cmd', cmd: cmd });
+                renderPointList();
+                document.getElementById('tp-screen').innerHTML = `COMMAND ${cmd} INSERTED AFTER P${index + 1}.`;
+            };
+            selInsertCmd.onclick = (e) => e.stopPropagation();
+            
+            const btnDelete = document.createElement('button');
+            btnDelete.innerText = '删除';
+            btnDelete.style.padding = '2px 5px';
+            btnDelete.style.fontSize = '12px';
+            btnDelete.style.margin = '0';
+            btnDelete.className = 'btn-danger';
+            btnDelete.onclick = (e) => {
+                e.stopPropagation();
+                waypoints.splice(index, 1);
+                if (selectedPointIndex === index) selectedPointIndex = -1;
+                else if (selectedPointIndex > index) selectedPointIndex--;
+                renderPointList();
+                document.getElementById('tp-screen').innerHTML = `ITEM ${index + 1} DELETED.`;
+            };
+            
+            btnGroup.appendChild(btnInsert);
+            btnGroup.appendChild(selInsertCmd);
+            btnGroup.appendChild(btnDelete);
+            
+            topRow.appendChild(label);
+            topRow.appendChild(btnGroup);
+            li.appendChild(topRow);
+            
+            if (wp.type !== 'cmd') {
+                const interpRow = document.createElement('div');
+                interpRow.style.display = 'flex';
+                interpRow.style.alignItems = 'center';
+                interpRow.style.gap = '5px';
+                interpRow.style.fontSize = '11px';
+                interpRow.style.marginTop = '2px';
+                
+                const interpLabel = document.createElement('span');
+                interpLabel.innerText = '插补:';
+                
+                const interpSelect = document.createElement('select');
+                interpSelect.style.fontSize = '11px';
+                interpSelect.style.padding = '1px';
+                ['ptp', 'line', 'circle'].forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.innerText = m.toUpperCase();
+                    if (wp.interp === m) opt.selected = true;
+                    interpSelect.appendChild(opt);
+                });
+                interpSelect.onchange = (e) => {
+                    waypoints[index].interp = e.target.value;
+                    document.getElementById('tp-screen').innerHTML = `P${index + 1} INTERP SET TO ${e.target.value.toUpperCase()}.`;
+                };
+                
+                interpRow.appendChild(interpLabel);
+                interpRow.appendChild(interpSelect);
+                li.appendChild(interpRow);
+
+                const inputRow = document.createElement('div');
+                inputRow.style.display = 'flex';
+                inputRow.style.gap = '5px';
+                inputRow.style.justifyContent = 'space-between';
+                
+                const createInput = (val, axis, updateFn) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.display = 'flex';
+                    wrapper.style.alignItems = 'center';
+                    wrapper.style.fontSize = '11px';
+                    const lbl = document.createElement('span');
+                    lbl.innerText = axis + ':';
+                    lbl.style.marginRight = '2px';
+                    const inp = document.createElement('input');
+                    inp.type = 'number';
+                    inp.step = '0.1';
+                    inp.value = val.toFixed(2);
+                    inp.style.width = '60px';
+                    inp.style.fontSize = '11px';
+                    inp.style.padding = '2px';
+                    inp.onchange = (e) => updateFn(parseFloat(e.target.value));
+                    wrapper.appendChild(lbl);
+                    wrapper.appendChild(inp);
+                    return wrapper;
+                };
+                
+                inputRow.appendChild(createInput(wp.pos.x, 'X', (v) => editPoint(index, 'X', v)));
+                inputRow.appendChild(createInput(wp.pos.z * -1, 'Y', (v) => editPoint(index, 'Y', v)));
+                inputRow.appendChild(createInput(wp.pos.y, 'Z', (v) => editPoint(index, 'Z', v)));
+                
+                li.appendChild(inputRow);
+            }
+            
+            list.appendChild(li);
+        });
+    }
+
+    function editPoint(index, axis, val) {
+        if (isNaN(val)) return;
+        const wp = waypoints[index];
+        const newPos = wp.pos.clone();
+        if (axis === 'X') newPos.x = val;
+        if (axis === 'Y') newPos.z = val * -1;
+        if (axis === 'Z') newPos.y = val;
+        
+        // 备份当前状态
+        const currentAngles = joints.map(j => j.group.rotation[j.axis]);
+        
+        if (solveIK(newPos)) {
+            const newAngles = joints.map(j => j.group.rotation[j.axis]);
+            waypoints[index] = { ...wp, pos: newPos.clone(), angles: newAngles };
+            document.getElementById('tp-screen').innerHTML = `POINT P${index + 1} EDITED.`;
+        } else {
+            document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: EDITED POINT UNREACHABLE.</span>`;
+        }
+        
+        // 恢复状态
+        joints.forEach((j, i) => {
+            j.group.rotation[j.axis] = currentAngles[i];
+            j.group.updateMatrixWorld(true);
+        });
+        updateScreen();
+        renderPointList();
+    }
+
+    let currentInsertIndex = -1;
+
+    function insertPointPrompt(insertIndex) {
+        currentInsertIndex = insertIndex;
+        const modal = document.getElementById('insert-modal');
+        modal.style.display = 'flex';
+        
+        // 如果有上一个点，可以使用上一个点的坐标作为默认值
+        if (insertIndex > 0 && waypoints[insertIndex - 1]) {
+            const prevWp = waypoints[insertIndex - 1];
+            document.getElementById('modal-input-x').value = prevWp.pos.x.toFixed(2);
+            document.getElementById('modal-input-y').value = (prevWp.pos.z * -1).toFixed(2);
+            document.getElementById('modal-input-z').value = prevWp.pos.y.toFixed(2);
+        } else {
+            document.getElementById('modal-input-x').value = '0';
+            document.getElementById('modal-input-y').value = '0';
+            document.getElementById('modal-input-z').value = '0';
+        }
+    }
+
+    document.getElementById('modal-btn-current').addEventListener('click', () => {
+        const pos = new THREE.Vector3();
+        tcp.tip.getWorldPosition(pos);
+        document.getElementById('modal-input-x').value = pos.x.toFixed(2);
+        document.getElementById('modal-input-y').value = (pos.z * -1).toFixed(2);
+        document.getElementById('modal-input-z').value = pos.y.toFixed(2);
+    });
+
+    document.getElementById('modal-btn-cancel').addEventListener('click', () => {
+        document.getElementById('insert-modal').style.display = 'none';
+        document.getElementById('tp-screen').innerHTML = `INSERT CANCELLED.`;
+    });
+
+    document.getElementById('modal-btn-confirm').addEventListener('click', () => {
+        const xStr = document.getElementById('modal-input-x').value;
+        const yStr = document.getElementById('modal-input-y').value;
+        const zStr = document.getElementById('modal-input-z').value;
+        
+        document.getElementById('insert-modal').style.display = 'none';
+        
+        const x = parseFloat(xStr);
+        const y = parseFloat(yStr);
+        const z = parseFloat(zStr);
+        
+        if (isNaN(x) || isNaN(y) || isNaN(z)) {
+            document.getElementById('tp-screen').innerHTML = `INSERT CANCELLED: INVALID INPUT.`;
+            return;
+        }
+        
+        const targetPos = new THREE.Vector3(x, z, y * -1);
+        const currentAngles = joints.map(j => j.group.rotation[j.axis]);
+        
+        if (solveIK(targetPos)) {
+            const newAngles = joints.map(j => j.group.rotation[j.axis]);
+            const interp = document.querySelector('input[name="interp"]:checked').value;
+            waypoints.splice(currentInsertIndex, 0, { type: 'point', pos: targetPos.clone(), angles: newAngles, interp: interp });
+            document.getElementById('tp-screen').innerHTML = `ITEM INSERTED AT ${currentInsertIndex + 1}.`;
+        } else {
+            document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: INSERTED POINT UNREACHABLE.</span>`;
+        }
+        
+        joints.forEach((j, i) => {
+            j.group.rotation[j.axis] = currentAngles[i];
+            j.group.updateMatrixWorld(true);
+        });
+        updateScreen();
+        renderPointList();
+    });
+
+    function savePoint() {
+        const pos = new THREE.Vector3();
+        tcp.tip.getWorldPosition(pos);
+        const jointAngles = joints.map(j => j.group.rotation[j.axis]);
+        const interp = document.querySelector('input[name="interp"]:checked').value;
+        
+        const wp = { type: 'point', pos: pos.clone(), angles: [...jointAngles], interp: interp };
+        
+        if (selectedPointIndex !== -1) {
+            waypoints.splice(selectedPointIndex + 1, 0, wp);
+            selectedPointIndex++;
+            document.getElementById('tp-screen').innerHTML = `ITEM INSERTED AT ${selectedPointIndex + 1}.`;
+        } else {
+            waypoints.push(wp);
+            document.getElementById('tp-screen').innerHTML = `ITEM ${waypoints.length} SAVED.`;
+        }
+        
+        renderPointList();
+    }
+
+    function clearPoints() {
+        waypoints = [];
+        selectedPointIndex = -1;
+        renderPointList();
+        trajPoints.length = 0;
+        trajGeometry.setFromPoints(trajPoints);
+        document.getElementById('tp-screen').innerHTML = `POINTS CLEARED.`;
+    }
+
+    function resetPosition() {
+        if (isRunning) {
+            document.getElementById('tp-screen').innerHTML = `CANNOT RESET WHILE RUNNING.`;
+            return;
+        }
+        joints.forEach(j => {
+            j.group.rotation[j.axis] = 0;
+        });
+        updateScreen();
+        document.getElementById('tp-screen').innerHTML = `ROBOT RESET TO HOME POSITION.`;
+    }
+
+    function downloadProgram() {
+        if (waypoints.length === 0) {
+            document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: NO PROGRAM TO DOWNLOAD.</span>`;
+            return;
+        }
+        const data = JSON.stringify(waypoints, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url;
+        a.download = `robot_program_${timestamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        document.getElementById('tp-screen').innerHTML = `PROGRAM DOWNLOADED.`;
+    }
+
+    function importProgram(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (Array.isArray(imported)) {
+                    const processed = imported.map(item => {
+                        if (item.type === 'point' && item.pos) {
+                            return {
+                                ...item,
+                                pos: new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z)
+                            };
+                        }
+                        return item;
+                    });
+                    
+                    const isValid = processed.every(item => item.type && (item.type === 'cmd' || item.pos));
+                    if (isValid) {
+                        waypoints = processed;
+                        selectedPointIndex = -1;
+                        renderPointList();
+                        document.getElementById('tp-screen').innerHTML = `PROGRAM IMPORTED: ${waypoints.length} ITEMS.`;
+                    } else {
+                        throw new Error('Invalid program format');
+                    }
+                } else {
+                    throw new Error('Imported data is not an array');
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: IMPORT FAILED. ${err.message}</span>`;
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function startRun() {
+        runState.mode = document.querySelector('input[name="interp"]:checked').value;
+        runState.weldMode = document.querySelector('input[name="weld"]:checked').value;
+        
+        const points = waypoints.filter(wp => wp.type === 'point');
+        if (runState.mode === 'circle') {
+            if (points.length !== 3) {
+                document.getElementById('tp-screen').innerHTML = `ERROR: CIRCLE STRICTLY REQUIRES 3 POINTS.`;
+                return;
+            }
+        } else {
+            if (points.length < 2) {
+                document.getElementById('tp-screen').innerHTML = `ERROR: PTP/LINE NEED AT LEAST 2 POINTS.`;
+                return;
+            }
+        }
+
+        isRunning = true;
+        runState.currentIndex = 0;
+        runState.progress = 0;
+        trajPoints.length = 0;
+        
+        runState.isArcOn = false;
+        runState.isWeaving = false;
+        weldLight.intensity = 0;
+        
+        // Find the first point and move there instantly
+        let firstPointIndex = waypoints.findIndex(wp => wp.type === 'point');
+        if (firstPointIndex !== -1) {
+            const p1 = waypoints[firstPointIndex];
+            joints.forEach((j, i) => {
+                j.group.rotation[j.axis] = p1.angles[i];
+            });
+            robotBase.updateMatrixWorld(true);
+            runState.lastPoint = p1;
+            runState.currentIndex = firstPointIndex + 1; // Start from the next instruction
+        }
+
+        document.getElementById('tp-screen').innerHTML = `RUNNING PROGRAM...<br>MODE: ${runState.mode.toUpperCase()}<br>WELD: ${runState.weldMode.toUpperCase()}`;
+    }
+
+    function stopRun() {
+        isRunning = false;
+        runState.waitStartTime = null;
+        weldLight.intensity = 0;
+        document.getElementById('tp-screen').innerHTML = `PROGRAM STOPPED.`;
+        syncSliders();
+    }
+
+    // 严格圆弧插补计算 (三点圆弧)
+    function getStrictCircle(p1, p2, p3, t) {
+        const a = new THREE.Vector3().subVectors(p1, p3);
+        const b = new THREE.Vector3().subVectors(p2, p3);
+        const cross = new THREE.Vector3().crossVectors(a, b);
+        const crossSq = cross.lengthSq();
+        
+        if (crossSq < 1e-9) {
+            // 三点共线，退化为直线插补
+            const pos = new THREE.Vector3().lerpVectors(p1, p3, t);
+            const tangent = new THREE.Vector3().subVectors(p3, p1).normalize();
+            return { pos, tangent };
+        }
+        
+        // 计算圆心
+        const center = new THREE.Vector3().crossVectors(
+            new THREE.Vector3().subVectors(
+                b.clone().multiplyScalar(a.lengthSq()),
+                a.clone().multiplyScalar(b.lengthSq())
+            ),
+            cross
+        ).divideScalar(2 * crossSq).add(p3);
+        
+        const vA = new THREE.Vector3().subVectors(p1, center);
+        const vB = new THREE.Vector3().subVectors(p2, center);
+        const vC = new THREE.Vector3().subVectors(p3, center);
+        
+        const radius = vA.length();
+        
+        // 构建局部二维坐标系
+        const X = vA.clone().normalize();
+        let n = cross.clone().normalize();
+        let Y = new THREE.Vector3().crossVectors(n, X).normalize();
+        
+        // 确保圆弧经过 p2
+        let angleB = Math.atan2(vB.dot(Y), vB.dot(X));
+        if (angleB < 0) {
+            n.negate();
+            Y.crossVectors(n, X).normalize();
+            angleB = Math.atan2(vB.dot(Y), vB.dot(X));
+        }
+        
+        let angleC = Math.atan2(vC.dot(Y), vC.dot(X));
+        if (angleC < 0) angleC += Math.PI * 2;
+        if (angleC < angleB) angleC += Math.PI * 2;
+        
+        // 分段插值：确保 t=0.5 时经过 p2 (angleB)
+        let angle;
+        if (t <= 0.5) {
+            angle = (t / 0.5) * angleB;
+        } else {
+            angle = angleB + ((t - 0.5) / 0.5) * (angleC - angleB);
+        }
+        
+        const pos = new THREE.Vector3()
+            .copy(center)
+            .add(X.clone().multiplyScalar(radius * Math.cos(angle)))
+            .add(Y.clone().multiplyScalar(radius * Math.sin(angle)));
+            
+        const tangent = new THREE.Vector3()
+            .add(X.clone().multiplyScalar(-Math.sin(angle)))
+            .add(Y.clone().multiplyScalar(Math.cos(angle)))
+            .normalize();
+            
+        return { pos, tangent };
+    }
+
+    // 运行逻辑 (在 requestAnimationFrame 中调用)
+    function updateRun() {
+        if (!isRunning) return;
+
+        // Process commands instantly until we need to move to a point
+        while (runState.currentIndex < waypoints.length) {
+            const currentItem = waypoints[runState.currentIndex];
+            if (currentItem.type === 'cmd') {
+                // Execute command
+                if (currentItem.cmd === 'ARC_START') {
+                    runState.isArcOn = true;
+                    weldLight.intensity = runState.weldMode === 'arc' ? 2 : 1.5;
+                } else if (currentItem.cmd === 'ARC_STOP') {
+                    runState.isArcOn = false;
+                    weldLight.intensity = 0;
+                } else if (currentItem.cmd === 'WEAVE_START') {
+                    runState.isWeaving = true;
+                } else if (currentItem.cmd === 'WEAVE_STOP') {
+                    runState.isWeaving = false;
+                } else if (currentItem.cmd === 'WAIT') {
+                    // Simple 1 second wait
+                    if (!runState.waitStartTime) {
+                        runState.waitStartTime = Date.now();
+                        return; // Pause this frame
+                    }
+                    if (Date.now() - runState.waitStartTime < 1000) {
+                        return; // Still waiting
+                    }
+                    runState.waitStartTime = null; // Done waiting
+                }
+                runState.currentIndex++;
+            } else if (currentItem.type === 'point') {
+                // We need to move to this point
+                break;
+            }
+        }
+
+        if (runState.currentIndex >= waypoints.length) {
+            stopRun();
+            return;
+        }
+
+        let p1 = runState.lastPoint;
+        let p2 = waypoints[runState.currentIndex];
+        
+        // 使用点位自带的插补方式，如果没有则使用全局设置
+        const currentInterp = p2.interp || runState.mode;
+        
+        // 速度计算
+        const step = runState.speed * 0.01; // 基础步长
+        runState.progress += step;
+
+        let isEnd = false;
+        if (runState.progress >= 1) {
+            runState.progress = 0;
+            
+            if (currentInterp === 'circle') {
+                // Find the next point for circle mode
+                let p3Index = -1;
+                for (let i = runState.currentIndex + 1; i < waypoints.length; i++) {
+                    if (waypoints[i].type === 'point') {
+                        p3Index = i;
+                        break;
+                    }
+                }
+                if (p3Index !== -1) {
+                    runState.lastPoint = waypoints[p3Index];
+                    runState.currentIndex = p3Index + 1;
+                } else {
+                    isEnd = true;
+                }
+            } else {
+                runState.lastPoint = p2;
+                runState.currentIndex++;
+            }
+
+            if (isEnd || runState.currentIndex >= waypoints.length) {
+                stopRun();
+                return;
+            }
+            
+            // Re-evaluate commands immediately
+            return;
+        }
+
+        // --- 插补计算 ---
+        let targetPos = new THREE.Vector3();
+
+        if (currentInterp === 'ptp') {
+            // PTP: 关节空间线性插值
+            joints.forEach((j, i) => {
+                const a1 = p1.angles[i];
+                const a2 = p2.angles[i];
+                // 移除 normalizeAngle，直接使用原始角度插值，保留示教时的绕线方向，防止卡死在关节限位
+                let targetAngle = a1 + (a2 - a1) * runState.progress;
+                // 关节限位校验
+                targetAngle = Math.max(j.min, Math.min(j.max, targetAngle));
+                j.group.rotation[j.axis] = targetAngle;
+            });
+            // 更新世界矩阵
+            robotBase.updateMatrixWorld(true);
+            tcp.tip.getWorldPosition(targetPos);
+            
+            // 摆弧逻辑 (PTP模式下叠加笛卡尔偏移)
+            if (runState.isArcOn) {
+                if (runState.isWeaving && runState.weldMode === 'arc') {
+                    const dir = new THREE.Vector3().subVectors(p2.pos, p1.pos);
+                    if (dir.lengthSq() > 0.0001) {
+                        dir.normalize();
+                        let up = new THREE.Vector3(0, 1, 0);
+                        if (Math.abs(dir.y) > 0.9) up.set(1, 0, 0);
+                        const weaveDir = new THREE.Vector3().crossVectors(dir, up).normalize();
+                        
+                        const amplitude = runState.weaveAmplitude; 
+                        const frequency = 15; 
+                        // 使用一次函数（三角波/折线）代替正弦波，实现简单明了的折线摆动
+                        const phase = (runState.progress * frequency + 0.75) % 1;
+                        const offset = (Math.abs(phase * 4 - 2) - 1) * amplitude;
+                        targetPos.addScaledVector(weaveDir, offset);
+                    }
+                    weldLight.intensity = 1 + Math.random() * 2;
+                } else {
+                    weldLight.intensity = runState.weldMode === 'arc' ? (1 + Math.random() * 2) : 1.5;
+                }
+                if (!solveIK(targetPos)) {
+                    stopRun();
+                    document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: TARGET UNREACHABLE OR SINGULARITY.</span>`;
+                    return;
+                }
+            }
+            
+        } else if (currentInterp === 'line') {
+            // 直线插补: 笛卡尔空间线性插值
+            targetPos.lerpVectors(p1.pos, p2.pos, runState.progress);
+            
+            // 摆弧逻辑
+            if (runState.isArcOn) {
+                if (runState.isWeaving && runState.weldMode === 'arc') {
+                    const dir = new THREE.Vector3().subVectors(p2.pos, p1.pos);
+                    if (dir.lengthSq() > 0.0001) {
+                        dir.normalize();
+                        let up = new THREE.Vector3(0, 1, 0);
+                        if (Math.abs(dir.y) > 0.9) up.set(1, 0, 0);
+                        const weaveDir = new THREE.Vector3().crossVectors(dir, up).normalize();
+                        
+                        const amplitude = runState.weaveAmplitude; 
+                        const frequency = 15; 
+                        // 使用一次函数（三角波/折线）代替正弦波，实现简单明了的折线摆动
+                        const phase = (runState.progress * frequency + 0.75) % 1;
+                        const offset = (Math.abs(phase * 4 - 2) - 1) * amplitude;
+                        targetPos.addScaledVector(weaveDir, offset);
+                    }
+                    weldLight.intensity = 1 + Math.random() * 2;
+                } else {
+                    weldLight.intensity = runState.weldMode === 'arc' ? (1 + Math.random() * 2) : 1.5;
+                }
+            }
+            if (!solveIK(targetPos)) {
+                stopRun();
+                document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: TARGET UNREACHABLE OR SINGULARITY.</span>`;
+                return;
+            }
+            
+        } else if (currentInterp === 'circle') {
+            // 严格圆弧插补 (三点圆弧)
+            let p3 = null;
+            for (let i = runState.currentIndex + 1; i < waypoints.length; i++) {
+                if (waypoints[i].type === 'point') {
+                    p3 = waypoints[i];
+                    break;
+                }
+            }
+            
+            if (p3) {
+                const circleData = getStrictCircle(p1.pos, p2.pos, p3.pos, runState.progress);
+                targetPos = circleData.pos;
+                
+                // 【算法修正】同样移除圆弧插补的关节空间预插值 Seed，依赖上一帧的连续性。
+                
+                // 摆弧逻辑
+                if (runState.isArcOn) {
+                    if (runState.isWeaving && runState.weldMode === 'arc') {
+                        const tangent = circleData.tangent;
+                        if (tangent.lengthSq() > 0.0001) {
+                            tangent.normalize();
+                            let up = new THREE.Vector3(0, 1, 0);
+                            if (Math.abs(tangent.y) > 0.9) up.set(1, 0, 0);
+                            const weaveDir = new THREE.Vector3().crossVectors(tangent, up).normalize();
+                            
+                            const amplitude = 0.4; 
+                            const frequency = 15; 
+                            // 使用一次函数（三角波/折线）代替正弦波，实现简单明了的折线摆动
+                            const phase = (runState.progress * frequency + 0.75) % 1;
+                            const offset = (Math.abs(phase * 4 - 2) - 1) * amplitude;
+                            targetPos.addScaledVector(weaveDir, offset);
+                        }
+                        weldLight.intensity = 1 + Math.random() * 2;
+                    } else {
+                        weldLight.intensity = runState.weldMode === 'arc' ? (1 + Math.random() * 2) : 1.5;
+                    }
+                }
+                if (!solveIK(targetPos)) {
+                    stopRun();
+                    document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: TARGET UNREACHABLE OR SINGULARITY.</span>`;
+                    return;
+                }
+            } else {
+                stopRun();
+                return;
+            }
+        }
+
+        // 记录轨迹
+        const currentPos = new THREE.Vector3();
+        tcp.tip.getWorldPosition(currentPos);
+        trajPoints.push(currentPos.clone());
+        
+        // 限制轨迹点数量，防止内存溢出
+        if (trajPoints.length > 2000) trajPoints.shift();
+        
+        trajGeometry.setFromPoints(trajPoints);
+        
+        // 更新 UI (降低频率以防卡顿)
+        if (Math.random() < 0.1) syncSliders();
+    }
+
+    /* ================= 主循环 ================= */
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        if (isRunning) {
+            updateRun();
+        } else {
+            // 闲置时更新屏幕
+            if (Math.random() < 0.05) updateScreen();
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // 启动
+    initScene();
+    buildRobot();
+    initUI();
+    updateScreen();
+    animate();
+
+</script>
+</body>
+</html>
