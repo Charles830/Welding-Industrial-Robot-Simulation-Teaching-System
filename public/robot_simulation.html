@@ -85,19 +85,6 @@
             font-size: 14px;
         }
 
-        .tp-header {
-            background: transparent;
-            color: var(--text-color);
-            padding: 15px 20px;
-            text-align: left;
-            font-weight: 600;
-            letter-spacing: normal;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
         .theme-select { background: rgba(120,120,128,0.1); color: var(--text-color); border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; outline: none; font-weight: 500; cursor: pointer; transition: background 0.2s; }
         .theme-select:hover { background: rgba(120,120,128,0.2); }
 
@@ -126,7 +113,47 @@
             opacity: 1;
         }
 
-        .tp-body { flex: 1; overflow-y: auto; padding: 0 15px 15px 15px; }
+        /* ================= 选项卡样式 (Tabs) ================= */
+        .tp-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(120,120,128,0.05);
+            border-radius: 12px 12px 0 0;
+            overflow: hidden;
+        }
+        .tp-tab {
+            flex: 1;
+            padding: 12px 4px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--text-color);
+            opacity: 0.6;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+        }
+        .tp-tab:hover {
+            opacity: 0.8;
+            background: rgba(120,120,128,0.05);
+        }
+        .tp-tab.active {
+            opacity: 1;
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            background: transparent;
+        }
+        .tp-content {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        .tp-content.active {
+            display: flex;
+        }
 
         .control-group {
             border: none;
@@ -228,75 +255,6 @@
 <div id="app">
     <!-- 左侧 3D 视图 -->
     <div id="canvas-container">
-        <div id="top-left-ui" style="position: absolute; top: 15px; left: 15px; z-index: 5; display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <label for="model-upload" class="view-btn" style="width: auto; padding: 0 15px; border-radius: 18px; font-size: 13px; font-weight: bold;">上传工件</label>
-                <input type="file" id="model-upload" accept=".stl,.gltf,.glb,.obj,.zip" style="display: none;">
-                <span id="model-status" style="font-size: 12px; color: var(--text-color); background: var(--panel-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); padding: 4px 10px; border-radius: 12px; border: 1px solid var(--border-color); display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">未加载模型</span>
-            </div>
-            
-            <div id="model-controls" style="display: none; background: var(--panel-bg); backdrop-filter: blur(10px); padding: 12px; border-radius: 16px; border: 1px solid var(--border-color); flex-direction: column; gap: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 220px;">
-                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: -4px; padding-left: 2px;">变换模式</div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
-                    <button id="btn-mode-translate" class="view-btn active" style="width: 100%; height: 32px; font-size: 11px;" title="平移">平移</button>
-                    <button id="btn-mode-rotate" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="旋转">旋转</button>
-                    <button id="btn-mode-scale" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="缩放">缩放</button>
-                </div>
-                
-                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: -4px; padding-left: 2px;">工件管理</div>
-                <div id="btn-toggle-axes-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                    <button id="btn-lock-model" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="锁定位置">未锁定</button>
-                    <button id="btn-toggle-axes" class="view-btn active" style="width: 100%; height: 32px; font-size: 11px;" title="显示坐标系">坐标系</button>
-                </div>
-
-                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: -4px; padding-left: 2px;">位置与吸附</div>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
-                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
-                        <span>X:</span>
-                        <input type="number" id="model-pos-x" value="5" step="0.1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
-                    </div>
-                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
-                        <span>Y:</span>
-                        <input type="number" id="model-pos-y" value="0" step="0.1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
-                    </div>
-                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
-                        <span>Z:</span>
-                        <input type="number" id="model-pos-z" value="0" step="0.1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 0 4px;">
-                    <span style="opacity: 0.7;">网格吸附</span>
-                    <label class="switch" style="transform: scale(0.7); transform-origin: right;">
-                        <input type="checkbox" id="toggle-grid-snap">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <div class="view-btn" style="flex: 1; padding: 0 10px; border-radius: 18px; font-size: 11px; cursor: default; justify-content: space-between; height: 32px;">
-                        <span>比例:</span>
-                        <input type="number" id="model-scale" value="1" step="0.1" style="width: 45px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-weight: bold; font-size: 11px;">
-                    </div>
-                    <button id="btn-remove-model" class="view-btn" style="flex: 0 0 60px; height: 32px; color: var(--danger-color); border-color: var(--danger-color); font-size: 11px;" title="移除工件">移除</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-perspectives" style="position: absolute; top: 15px; right: 15px; z-index: 5; display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
-            <div style="background: var(--panel-bg); backdrop-filter: blur(10px); padding: 10px; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 140px;">
-                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: 4px; text-align: center;">工件视角</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                    <button id="btn-wp-view-x" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 X+ 视图">X+</button>
-                    <button id="btn-wp-view-x-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 X- 视图">X-</button>
-                    <button id="btn-wp-view-y" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Y+ 视图">Y+</button>
-                    <button id="btn-wp-view-y-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Y- 视图">Y-</button>
-                    <button id="btn-wp-view-z" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Z+ 视图">Z+</button>
-                    <button id="btn-wp-view-z-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Z- 视图">Z-</button>
-                </div>
-                <button id="btn-focus-wp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px; margin-top: 4px;">聚焦工件</button>
-            </div>
-        </div>
-
         <div id="overlay-ui">
             <div id="status-panel" style="background: var(--screen-bg); color: var(--screen-text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 12px 16px; border-radius: 12px; font-size: 12px; line-height: 1.4; box-shadow: 0 4px 16px rgba(0,0,0,0.05); border: 1px solid var(--border-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); margin: 0; height: auto; min-width: 200px;">
                 TCP POS:<br>X: 0.00  Y: 0.00  Z: 0.00<br><br>JOINTS:<br>J1: 0.0° J2: 0.0° J3: 0.0° J4: 0.0° J5: 0.0° J6: 0.0°
@@ -316,13 +274,12 @@
     <!-- 右侧 示教器面板 -->
     <div id="teach-pendant">
         <div class="tp-toggle-btn" id="tp-toggle-btn">▶</div>
-        <div class="tp-header">
-            <span>TEACH PENDANT</span>
-            <select id="theme-select" class="theme-select">
-                <option value="system">System</option>
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-            </select>
+        <div class="tp-tabs">
+            <div class="tp-tab active" data-target="tp-content-robot">示教器</div>
+            <div class="tp-tab" data-target="tp-content-workbench">工作台设置</div>
+            <div class="tp-tab" data-target="tp-content-model">上传工件</div>
+            <div class="tp-tab" data-target="tp-content-welding">焊接工艺</div>
+            <div class="tp-tab" data-target="tp-content-system">系统设置</div>
         </div>
 
         <div id="insert-modal" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center;">
@@ -330,16 +287,16 @@
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px;">插入点位</h3>
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <label>X:</label>
-                        <input type="number" id="modal-input-x" value="0" step="0.1" style="width: 150px; padding: 5px;">
+                        <label>X(cm):</label>
+                        <input type="number" id="modal-input-x" value="0" step="1" style="width: 150px; padding: 5px;">
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <label>Y:</label>
-                        <input type="number" id="modal-input-y" value="0" step="0.1" style="width: 150px; padding: 5px;">
+                        <label>Y(cm):</label>
+                        <input type="number" id="modal-input-y" value="0" step="1" style="width: 150px; padding: 5px;">
                     </div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <label>Z:</label>
-                        <input type="number" id="modal-input-z" value="0" step="0.1" style="width: 150px; padding: 5px;">
+                        <label>Z(cm):</label>
+                        <input type="number" id="modal-input-z" value="0" step="1" style="width: 150px; padding: 5px;">
                     </div>
                     <button id="modal-btn-current" style="padding: 5px; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">使用当前点</button>
                 </div>
@@ -356,16 +313,17 @@
             WAITING FOR COMMAND...
         </div>
 
-        <div class="tp-body">
+        <div id="tp-content-robot" class="tp-content active">
             <!-- 手动控制 -->
             <fieldset class="control-group">
-                <legend>手动控制 (Jogging)</legend>
+                <legend>手动控制</legend>
                 <div style="margin-bottom: 10px;">
                     <div class="radio-group" style="flex-wrap: wrap;">
                         <label><input type="radio" name="jog-mode" value="joint" checked> 关节(Joint)</label>
                         <label><input type="radio" name="jog-mode" value="cartesian"> 笛卡尔(Cartesian)</label>
                         <label><input type="radio" name="jog-mode" value="posture"> 姿态保持(Posture)</label>
                     </div>
+                    <div style="font-size: 10px; opacity: 0.6; margin-top: 4px; padding-left: 4px;">* 姿态保持模式下，TCP在移动过程中会始终保持当前的工具姿态，适用于需要恒定焊接角度的场景。</div>
                 </div>
                 <div id="joint-controls"></div>
                 <div id="cartesian-controls" style="display: none;"></div>
@@ -435,8 +393,8 @@
                     <input type="range" id="global-speed" min="1" max="100" value="30">
                     <span class="val-display" id="speed-val">30%</span>
                 </div>
-                <div style="margin: 10px 0;">
-                    <div style="font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 8px;">插补模式:</div>
+                <div style="margin: 10px 0; display: none;">
+                    <div style="font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 8px;">默认插补模式:</div>
                     <div class="radio-group">
                         <label><input type="radio" name="interp" value="ptp" checked> PTP</label>
                         <label><input type="radio" name="interp" value="line"> Line(直线)</label>
@@ -445,8 +403,148 @@
                 </div>
             </fieldset>
 
+
+        </div>
+
+        <div id="tp-content-workbench" class="tp-content">
+            <!-- 工作台设置 -->
+            <fieldset class="control-group">
+                <legend>工作台设置</legend>
+                <div class="row">
+                    <label style="width:70px;">长度(L):</label>
+                    <input type="range" id="wb-length" min="40" max="200" step="1" value="120">
+                    <span class="val-display" id="wb-l-val">120 cm</span>
+                </div>
+                <div class="row">
+                    <label style="width:70px;">宽度(W):</label>
+                    <input type="range" id="wb-width" min="40" max="150" step="1" value="80">
+                    <span class="val-display" id="wb-w-val">80 cm</span>
+                </div>
+                <div class="row">
+                    <label style="width:70px;">高度(H):</label>
+                    <input type="range" id="wb-height" min="10" max="80" step="1" value="40">
+                    <span class="val-display" id="wb-h-val">40 cm</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-move-wb" class="view-btn" style="flex: 1; height: 32px; font-size: 11px;">移动工作台</button>
+                    <button id="btn-reset-wb" class="view-btn" style="flex: 1; height: 32px; font-size: 11px;">重置位置</button>
+                </div>
+            </fieldset>
+        </div>
+
+        <div id="tp-content-model" class="tp-content">
+            <!-- 上传工件 -->
+            <fieldset class="control-group">
+                <legend>上传工件</legend>
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                    <label for="model-upload" class="view-btn" style="width: auto; padding: 0 15px; border-radius: 18px; font-size: 13px; font-weight: bold; flex: 1; text-align: center; height: 36px; line-height: 36px;">点击上传</label>
+                    <input type="file" id="model-upload" accept=".stl,.gltf,.glb,.obj,.zip" style="display: none;">
+                </div>
+                <div id="model-status" style="font-size: 12px; color: var(--text-color); background: rgba(120,120,128,0.1); padding: 8px 12px; border-radius: 10px; display: none; text-align: center; margin-top: 4px;">未加载模型</div>
+            </fieldset>
+
+            <!-- 基本几何体 -->
+            <fieldset id="shape-selection" class="control-group">
+                <legend>基本几何体</legend>
+                
+                <!-- 尺寸自定义输入 -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 10px;">
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between; cursor: default; border-radius: 6px;">
+                        <span>长/R(cm):</span>
+                        <input type="number" id="shape-dim-x" value="20" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between; cursor: default; border-radius: 6px;">
+                        <span>宽(cm):</span>
+                        <input type="number" id="shape-dim-y" value="20" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between; cursor: default; border-radius: 6px;">
+                        <span>高(cm):</span>
+                        <input type="number" id="shape-dim-z" value="20" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                    <button id="btn-add-box" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">长方体</button>
+                    <button id="btn-add-prism" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">三棱柱</button>
+                    <button id="btn-add-cylinder" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">圆柱体</button>
+                    <button id="btn-add-sphere" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">球体</button>
+                </div>
+            </fieldset>
+
+            <!-- 工件列表 -->
+            <fieldset id="model-list-group" class="control-group" style="display: none; flex-direction: column; gap: 6px;">
+                <legend>工作空间工件</legend>
+                <div id="model-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 120px; overflow-y: auto; padding-right: 4px;">
+                    <!-- 列表项动态生成 -->
+                </div>
+            </fieldset>
+
+            <!-- 工件控制 -->
+            <fieldset id="model-controls" class="control-group" style="display: none; flex-direction: column; gap: 10px;">
+                <legend>工件控制</legend>
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: 2px; padding-left: 2px;">变换模式</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+                    <button id="btn-mode-translate" class="view-btn active" style="width: 100%; height: 32px; font-size: 11px;" title="平移">平移</button>
+                    <button id="btn-mode-rotate" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="旋转">旋转</button>
+                    <button id="btn-mode-scale" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="缩放">缩放</button>
+                </div>
+                
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: 2px; padding-left: 2px; margin-top: 4px;">工件管理</div>
+                <div id="btn-toggle-axes-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-lock-model" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="锁定位置">未锁定</button>
+                    <button id="btn-toggle-axes" class="view-btn active" style="width: 100%; height: 32px; font-size: 11px;" title="显示坐标系">坐标系</button>
+                </div>
+
+                <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: 2px; padding-left: 2px; margin-top: 4px;">位置与吸附</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>X(cm):</span>
+                        <input type="number" id="model-pos-x" value="100" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Y(cm):</span>
+                        <input type="number" id="model-pos-y" value="0" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Z(cm):</span>
+                        <input type="number" id="model-pos-z" value="40" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 0 4px;">
+                    <span style="opacity: 0.7;">网格吸附</span>
+                    <label class="switch" style="transform: scale(0.7); transform-origin: right;">
+                        <input type="checkbox" id="toggle-grid-snap">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <div class="view-btn" style="flex: 1; padding: 0 10px; border-radius: 18px; font-size: 11px; cursor: default; justify-content: space-between; height: 32px;">
+                        <span>比例:</span>
+                        <input type="number" id="model-scale" value="1" step="0.1" style="width: 45px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-weight: bold; font-size: 11px;">
+                    </div>
+                    <button id="btn-remove-model" class="view-btn" style="flex: 0 0 60px; height: 32px; color: var(--danger-color); border-color: var(--danger-color); font-size: 11px;" title="移除工件">移除</button>
+                </div>
+            </fieldset>
+
+            <!-- 工件视角 -->
+            <fieldset id="view-perspectives" class="control-group" style="display: none; flex-direction: column; gap: 8px;">
+                <legend>工件视角</legend>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-wp-view-x" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 X+ 视图">X+</button>
+                    <button id="btn-wp-view-x-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 X- 视图">X-</button>
+                    <button id="btn-wp-view-y" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Y+ 视图">Y+</button>
+                    <button id="btn-wp-view-y-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Y- 视图">Y-</button>
+                    <button id="btn-wp-view-z" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Z+ 视图">Z+</button>
+                    <button id="btn-wp-view-z-opp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;" title="工件 Z- 视图">Z-</button>
+                </div>
+                <button id="btn-focus-wp" class="view-btn" style="width: 100%; height: 32px; font-size: 11px; margin-top: 4px;">聚焦工件</button>
+            </fieldset>
+        </div>
+
+        <div id="tp-content-welding" class="tp-content">
             <!-- 焊接工艺 -->
-            <fieldset class="control-group" style="margin-top: -8px;">
+            <fieldset class="control-group">
                 <legend>焊接工艺</legend>
                 <div style="margin-bottom: 5px;">
                     <div style="font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 6px;">工艺选择:</div>
@@ -457,21 +555,38 @@
                 </div>
                 <div class="row" style="margin-top: 8px;">
                     <label style="width:70px;">摆弧幅度:</label>
-                    <input type="range" id="weave-amplitude" min="0" max="20" value="4">
-                    <span class="val-display" id="weave-val">0.4</span>
+                    <input type="range" id="weave-amplitude" min="0.1" max="0.5" step="0.01" value="0.4">
+                    <span class="val-display" id="weave-val">0.40</span>
                 </div>
             </fieldset>
+        </div>
 
-            <!-- 显示轨迹 -->
-            <fieldset class="control-group" style="margin-top: -8px;">
-                <legend style="display: none;">显示控制</legend>
-                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; opacity: 0.8;">
+        <div id="tp-content-system" class="tp-content">
+            <!-- 系统设置 -->
+            <fieldset class="control-group">
+                <legend>系统设置</legend>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: 500; opacity: 0.8;">主题设置:</span>
+                    <select id="theme-select" class="theme-select" style="width: 120px;">
+                        <option value="system">跟随系统</option>
+                        <option value="dark">深色模式</option>
+                        <option value="light">浅色模式</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: 500; opacity: 0.8;">网格大小(cm):</span>
+                    <input type="number" id="grid-size-input" value="330" step="10" style="width: 60px; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; color: var(--text-color); text-align: right;">
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 8px; margin-top: 15px;">
                     <span>显示轨迹</span>
                     <label class="switch">
                         <input type="checkbox" id="toggle-traj" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
+                <button id="btn-clear-traj" style="width: 100%; font-size: 11px; padding: 6px; border-radius: 8px; background: rgba(120,120,128,0.1); border: none; color: var(--text-color); cursor: pointer;">清除当前轨迹</button>
             </fieldset>
         </div>
     </div>
@@ -528,8 +643,21 @@
     });
     applyTheme('system');
 
+    /* ================= 示教器选项卡切换 ================= */
+    const tabs = document.querySelectorAll('.tp-tab');
+    const contents = document.querySelectorAll('.tp-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.dataset.target;
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(target).classList.add('active');
+        });
+    });
+
     /* ================= 核心变量与状态 ================= */
-    let scene, camera, renderer, controls;
+    let scene, camera, renderer, controls, gridHelper;
     let robotBase, tcp;
     const joints = []; // 存储6个关节对象及其属性
     const cartesianAxes = [
@@ -549,11 +677,19 @@
     // 焊接特效相关
     let weldLight;
 
+    // 工作台相关
+    let workbenchGroup;
+    let workbenchParams = { l: 12, w: 8, h: 4 };
+    let workbenchPosition = new THREE.Vector3(10, 0, 0);
+
     // 模型加载相关
-    let uploadedModel = null;
-    let modelAxes = null;
+    let uploadedModel = null; // 当前选中的模型
+    let modelAxes = null; // 当前选中模型的坐标系
     let globalAxesHelper = null;
     let transformControl = null;
+    let allModels = []; // 所有已添加的模型
+    let raycaster = new THREE.Raycaster();
+    let mouse = new THREE.Vector2();
 
     // 运行状态机
     let runState = {
@@ -592,8 +728,23 @@
         scene.add(dirLight);
 
         // 辅助工具
-        const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x888888);
+        gridHelper = new THREE.GridHelper(33, 33, 0x444444, 0x888888);
         scene.add(gridHelper);
+
+        document.getElementById('grid-size-input').addEventListener('change', (e) => {
+            let val = parseFloat(e.target.value);
+            if (isNaN(val) || val <= 0) val = 330;
+            // val is in cm, GridHelper takes meters (val / 100 * 10 = val / 10)
+            const size = val / 10; 
+            const divisions = Math.max(1, Math.floor(size));
+            if (gridHelper) scene.remove(gridHelper);
+            gridHelper = new THREE.GridHelper(size, divisions, 0x444444, 0x888888);
+            scene.add(gridHelper);
+        });
+
+        // 初始化工作台
+        updateWorkbench();
+
         globalAxesHelper = new THREE.AxesHelper(5);
         scene.add(globalAxesHelper);
 
@@ -609,12 +760,12 @@
             controls.enabled = !event.value;
         });
         transformControl.addEventListener('change', function () {
-            if (uploadedModel) {
+            if (uploadedModel && transformControl.object === uploadedModel) {
                 // 网格吸附逻辑
                 if (document.getElementById('toggle-grid-snap').checked) {
                     const snap = 0.5; // 吸附步长
                     uploadedModel.position.x = Math.round(uploadedModel.position.x / snap) * snap;
-                    uploadedModel.position.y = Math.round(uploadedModel.position.y / snap) * snap;
+                    uploadedModel.position.y = Math.max(0, Math.round(uploadedModel.position.y / snap) * snap);
                     uploadedModel.position.z = Math.round(uploadedModel.position.z / snap) * snap;
                 }
 
@@ -628,16 +779,63 @@
                     const posX = document.getElementById('model-pos-x');
                     const posY = document.getElementById('model-pos-y');
                     const posZ = document.getElementById('model-pos-z');
-                    if (posX && document.activeElement !== posX) posX.value = uploadedModel.position.x.toFixed(2);
-                    if (posY && document.activeElement !== posY) posY.value = (uploadedModel.position.z * -1).toFixed(2);
-                    if (posZ && document.activeElement !== posZ) posZ.value = uploadedModel.position.y.toFixed(2);
+                    if (posX && document.activeElement !== posX) posX.value = (uploadedModel.position.x * 10).toFixed(1);
+                    if (posY && document.activeElement !== posY) posY.value = (uploadedModel.position.z * -10).toFixed(1);
+                    if (posZ && document.activeElement !== posZ) posZ.value = (uploadedModel.position.y * 10).toFixed(1);
                 }
+            } else if (workbenchGroup && transformControl.object === workbenchGroup) {
+                workbenchPosition.copy(workbenchGroup.position);
             }
         });
         
         // 初始隐藏变换控制，直到上传模型
         transformControl.visible = false;
         scene.add(transformControl);
+
+        // 模型选择逻辑
+        let pointerDownPos = { x: 0, y: 0 };
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            pointerDownPos.x = e.clientX;
+            pointerDownPos.y = e.clientY;
+        });
+
+        renderer.domElement.addEventListener('click', (event) => {
+            // 如果鼠标移动距离过大，认为是拖拽，不执行选择逻辑
+            const dx = event.clientX - pointerDownPos.x;
+            const dy = event.clientY - pointerDownPos.y;
+            if (Math.sqrt(dx * dx + dy * dy) > 5) return;
+
+            // 如果正在使用变换控制器，不执行选择逻辑
+            if (transformControl.dragging || transformControl.axis !== null) return;
+
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(allModels, true);
+
+            if (intersects.length > 0) {
+                let object = intersects[0].object;
+                while (object && !allModels.includes(object)) {
+                    object = object.parent;
+                }
+                if (object) {
+                    console.log("Selected object:", object);
+                    selectModel(object);
+                }
+            } else {
+                // 点击空白处，取消选择
+                if (uploadedModel) {
+                    transformControl.detach();
+                    uploadedModel = null;
+                    document.getElementById('model-status').innerText = '未选中工件';
+                    document.getElementById('model-controls').style.display = 'none';
+                    document.getElementById('view-perspectives').style.display = 'none';
+                    updateModelListUI();
+                }
+            }
+        }, false);
 
         const resizeObserver = new ResizeObserver(() => {
             onWindowResize();
@@ -1029,7 +1227,7 @@
             
             inputPos.addEventListener('change', (e) => {
                 if(isRunning) return;
-                let val = parseFloat(e.target.value);
+                let val = parseFloat(e.target.value) / 10;
                 if (isNaN(val)) val = 0;
                 
                 const currentPos = new THREE.Vector3();
@@ -1050,7 +1248,7 @@
             let jogInterval;
             const jog = (direction) => {
                 if(isRunning) return;
-                const step = 0.05; // 笛卡尔步长 (5cm)
+                const step = 0.1; // 笛卡尔步长 (1cm)
                 const currentPos = new THREE.Vector3();
                 tcp.tip.getWorldPosition(currentPos);
                 currentPos[ax.axis] += direction * step * ax.sign;
@@ -1230,16 +1428,23 @@
             trajLine.visible = showTrajectory;
         });
 
+        document.getElementById('btn-clear-traj').addEventListener('click', () => {
+            trajPoints.length = 0;
+            trajGeometry.setFromPoints(trajPoints);
+            document.getElementById('tp-screen').innerHTML = `TRAJECTORY CLEARED.`;
+        });
+
         document.getElementById('weave-amplitude').addEventListener('input', (e) => {
-            const val = parseInt(e.target.value);
-            runState.weaveAmplitude = val / 10;
-            document.getElementById('weave-val').innerText = runState.weaveAmplitude.toFixed(1);
+            const val = parseFloat(e.target.value);
+            runState.weaveAmplitude = val;
+            document.getElementById('weave-val').innerText = runState.weaveAmplitude.toFixed(2);
         });
 
         // 模型上传与控制
         const fileInput = document.getElementById('model-upload');
         const statusDiv = document.getElementById('model-status');
         const controlsDiv = document.getElementById('model-controls');
+        const viewPerspectivesDiv = document.getElementById('view-perspectives');
         const scaleInput = document.getElementById('model-scale');
         const btnModeTranslate = document.getElementById('btn-mode-translate');
         const btnModeRotate = document.getElementById('btn-mode-rotate');
@@ -1253,19 +1458,19 @@
 
         function updateModelPosition() {
             if (!uploadedModel) return;
-            let x = parseFloat(posXInput.value) || 0;
-            let y = parseFloat(posYInput.value) || 0;
-            let z = parseFloat(posZInput.value) || 0;
+            let x = (parseFloat(posXInput.value) || 0) / 10;
+            let y = (parseFloat(posYInput.value) || 0) / 10;
+            let z = (parseFloat(posZInput.value) || 0) / 10;
             
             // 网格吸附逻辑
             if (document.getElementById('toggle-grid-snap').checked) {
                 const snap = 0.5;
                 x = Math.round(x / snap) * snap;
                 y = Math.round(y / snap) * snap;
-                z = Math.round(z / snap) * snap;
-                posXInput.value = x.toFixed(2);
-                posYInput.value = y.toFixed(2);
-                posZInput.value = z.toFixed(2);
+                z = Math.max(0, Math.round(z / snap) * snap);
+                posXInput.value = (x * 10).toFixed(1);
+                posYInput.value = (y * 10).toFixed(1);
+                posZInput.value = (z * 10).toFixed(1);
             }
 
             uploadedModel.position.x = x;
@@ -1334,6 +1539,109 @@
             return group;
         }
 
+        function updateModelListUI() {
+            const listGroup = document.getElementById('model-list-group');
+            const listContainer = document.getElementById('model-list');
+            
+            if (allModels.length === 0) {
+                listGroup.style.display = 'none';
+                return;
+            }
+            
+            listGroup.style.display = 'flex';
+            listContainer.innerHTML = '';
+            
+            allModels.forEach((model, index) => {
+                const item = document.createElement('div');
+                item.className = 'view-btn' + (model === uploadedModel ? ' active' : '');
+                item.style.width = '100%';
+                item.style.height = '32px';
+                item.style.fontSize = '11px';
+                item.style.justifyContent = 'flex-start';
+                item.style.padding = '0 10px';
+                item.style.cursor = 'pointer';
+                item.innerText = model.name || `工件 ${index + 1}`;
+                
+                item.addEventListener('click', () => {
+                    selectModel(model);
+                });
+                
+                listContainer.appendChild(item);
+            });
+        }
+
+        function selectModel(model) {
+            if (!model) return;
+            uploadedModel = model;
+            
+            updateModelListUI();
+            
+            // 自动切换到“上传工件”选项卡
+            const tabs = document.querySelectorAll('.tp-tab');
+            const contents = document.querySelectorAll('.tp-content');
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            
+            const modelTab = Array.from(tabs).find(t => t.dataset.target === 'tp-content-model');
+            if (modelTab) modelTab.classList.add('active');
+            document.getElementById('tp-content-model').classList.add('active');
+            
+            // 更新 UI
+            statusDiv.innerText = '已选中: ' + (model.name || '模型');
+            statusDiv.style.display = 'block';
+            controlsDiv.style.display = 'flex';
+            viewPerspectivesDiv.style.display = 'block';
+            
+            // 更新缩放输入框
+            scaleInput.value = model.scale.x.toFixed(2);
+            
+            // 更新位置输入框
+            posXInput.value = (model.position.x * 10).toFixed(1);
+            posYInput.value = (model.position.z * -10).toFixed(1);
+            posZInput.value = (model.position.y * 10).toFixed(1);
+            
+            // 更新锁定按钮状态
+            const isLocked = model.userData.isLocked || false;
+            btnLockModel.classList.toggle('active', isLocked);
+            btnLockModel.innerText = isLocked ? '已锁定' : '未锁定';
+            
+            // 附加变换控制器
+            if (isLocked) {
+                transformControl.detach();
+            } else {
+                transformControl.attach(model);
+            }
+            
+            // 确保坐标系可见性
+            const axesVisible = btnToggleAxes.classList.contains('active');
+            transformControl.visible = axesVisible;
+            
+            // 如果模型有自己的坐标系，更新它
+            const axes = model.children.find(child => child instanceof THREE.AxesHelper);
+            if (axes) {
+                modelAxes = axes;
+                modelAxes.visible = isLocked ? false : axesVisible;
+            }
+            
+            // 如果是基本几何体，更新几何体参数输入框
+            if (model.userData && model.userData.isShape) {
+                document.getElementById('shape-dim-x').value = model.userData.dimX;
+                document.getElementById('shape-dim-y').value = model.userData.dimY;
+                document.getElementById('shape-dim-z').value = model.userData.dimZ;
+            }
+        }
+
+        function onModelLoaded(model, name) {
+            if (!model) return;
+            
+            model.position.set(10, 0, 0); // 放在工作台上
+            scene.add(model);
+            allModels.push(model);
+            if (name) model.name = name;
+            
+            selectModel(model);
+        }
+
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -1343,11 +1651,8 @@
             statusDiv.style.display = 'inline-block';
             statusDiv.innerText = '加载中...';
             
-            if (uploadedModel) {
-                scene.remove(uploadedModel);
-                transformControl.detach();
-                uploadedModel = null;
-                modelAxes = null;
+            if (fileInput.files.length > 0) {
+                // 不再自动移除之前的模型，支持多个
             }
 
             const reader = new FileReader();
@@ -1397,22 +1702,7 @@
                         if (materials) objLoader.setMaterials(materials);
                         
                         const model = objLoader.parse(objContent);
-                        uploadedModel = processModel(model);
-                        
-                        uploadedModel.position.set(5, 0, 0);
-                        posXInput.value = 5;
-                        posYInput.value = 0;
-                        posZInput.value = 0;
-                        scene.add(uploadedModel);
-                        transformControl.attach(uploadedModel);
-                        transformControl.visible = document.getElementById('btn-toggle-axes').classList.contains('active');
-                        
-                        statusDiv.innerText = `已加载: ${file.name}`;
-                        controlsDiv.style.display = 'flex';
-                        scaleInput.value = 1;
-                        btnLockModel.classList.remove('active');
-                        btnLockModel.innerText = '未锁定';
-                        transformControl.enabled = true;
+                        onModelLoaded(processModel(model), file.name);
                     } catch (err) {
                         console.error(err);
                         statusDiv.innerText = 'ZIP解析失败: ' + err.message;
@@ -1428,35 +1718,22 @@
                             const geometry = loader.parse(contents);
                             geometry.center();
                             geometry.computeVertexNormals();
-                            const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 });
+                            const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, metalness: 0.5 });
                             const mesh = new THREE.Mesh(geometry, material);
-                            uploadedModel = processModel(mesh);
+                            onModelLoaded(processModel(mesh), file.name);
                         } else if (filename.endsWith('.obj')) {
                             const loader = new THREE.OBJLoader();
                             const model = loader.parse(contents);
                             model.traverse((child) => {
                                 if (child.isMesh) {
-                                    child.material = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.5, roughness: 0.5 });
+                                    child.material = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.5, roughness: 0.5 });
                                 }
                             });
-                            uploadedModel = processModel(model);
+                            onModelLoaded(processModel(model), file.name);
                         } else if (filename.endsWith('.gltf') || filename.endsWith('.glb')) {
                             const loader = new THREE.GLTFLoader();
                             loader.parse(contents, '', (gltf) => {
-                                uploadedModel = processModel(gltf.scene);
-                                uploadedModel.position.set(5, 0, 0);
-                                posXInput.value = 5;
-                                posYInput.value = 0;
-                                posZInput.value = 0;
-                                scene.add(uploadedModel);
-                                transformControl.attach(uploadedModel);
-                                transformControl.visible = document.getElementById('btn-toggle-axes').classList.contains('active');
-                                statusDiv.innerText = `已加载: ${file.name}`;
-                                controlsDiv.style.display = 'flex';
-                                scaleInput.value = 1;
-                                btnLockModel.classList.remove('active');
-                                btnLockModel.innerText = '未锁定';
-                                transformControl.enabled = true;
+                                onModelLoaded(processModel(gltf.scene), file.name);
                             }, (error) => {
                                 console.error(error);
                                 statusDiv.innerText = '加载失败: ' + error.message;
@@ -1464,20 +1741,8 @@
                             return;
                         }
 
-                        if (uploadedModel) {
-                            uploadedModel.position.set(5, 0, 0);
-                            posXInput.value = 5;
-                            posYInput.value = 0;
-                            posZInput.value = 0;
-                            scene.add(uploadedModel);
-                            transformControl.attach(uploadedModel);
-                            transformControl.visible = document.getElementById('btn-toggle-axes').classList.contains('active');
-                            statusDiv.innerText = `已加载: ${file.name}`;
-                            controlsDiv.style.display = 'flex';
-                            scaleInput.value = 1;
-                            btnLockModel.classList.remove('active');
-                            btnLockModel.innerText = '未锁定';
-                            transformControl.enabled = true;
+                        if (filename.endsWith('.stl') || filename.endsWith('.obj')) {
+                            // 已经在上面处理了
                         }
                     } catch (err) {
                         console.error(err);
@@ -1495,15 +1760,27 @@
         btnLockModel.addEventListener('click', () => {
             if (!uploadedModel) return;
             const isLocked = btnLockModel.classList.toggle('active');
+            uploadedModel.userData.isLocked = isLocked;
             btnLockModel.innerText = isLocked ? '已锁定' : '未锁定';
             transformControl.enabled = !isLocked;
-            if (isLocked) transformControl.detach();
-            else transformControl.attach(uploadedModel);
+            
+            const axes = uploadedModel.children.find(child => child instanceof THREE.AxesHelper);
+            
+            if (isLocked) {
+                transformControl.detach();
+                if (axes) axes.visible = false;
+            } else {
+                transformControl.attach(uploadedModel);
+                if (axes) axes.visible = btnToggleAxes.classList.contains('active');
+            }
         });
 
         btnToggleAxes.addEventListener('click', () => {
             const isVisible = btnToggleAxes.classList.toggle('active');
-            if (modelAxes) modelAxes.visible = isVisible;
+            allModels.forEach(model => {
+                const axes = model.children.find(child => child instanceof THREE.AxesHelper);
+                if (axes) axes.visible = isVisible;
+            });
             if (globalAxesHelper) globalAxesHelper.visible = isVisible;
             // 同时切换变换控制器的可见性，这通常是用户认为的“工件上的坐标”
             if (transformControl) transformControl.visible = isVisible;
@@ -1547,21 +1824,270 @@
             if (uploadedModel) {
                 scene.remove(uploadedModel);
                 transformControl.detach();
-                uploadedModel = null;
-                modelAxes = null;
-                statusDiv.innerText = '未加载模型';
-                statusDiv.style.display = 'none';
-                controlsDiv.style.display = 'none';
-                fileInput.value = '';
+                
+                // 从列表中移除
+                const index = allModels.indexOf(uploadedModel);
+                if (index > -1) allModels.splice(index, 1);
+                
+                if (allModels.length > 0) {
+                    selectModel(allModels[allModels.length - 1]);
+                } else {
+                    uploadedModel = null;
+                    modelAxes = null;
+                    statusDiv.innerText = '未加载模型';
+                    statusDiv.style.display = 'none';
+                    controlsDiv.style.display = 'none';
+                    viewPerspectivesDiv.style.display = 'none';
+                    fileInput.value = '';
+                    updateModelListUI();
+                }
             }
         });
+
+        // 几何体添加逻辑
+        function addGeometricShape(type) {
+            let geometry;
+            const dimX = (parseFloat(document.getElementById('shape-dim-x').value) || 20) / 10;
+            const dimY = (parseFloat(document.getElementById('shape-dim-y').value) || 20) / 10;
+            const dimZ = (parseFloat(document.getElementById('shape-dim-z').value) || 20) / 10;
+
+            if (type === 'box') {
+                geometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
+            } else if (type === 'prism') {
+                const shape = new THREE.Shape();
+                shape.moveTo(-dimX/2, -dimY/2);
+                shape.lineTo(dimX/2, -dimY/2);
+                shape.lineTo(0, dimY/2);
+                shape.lineTo(-dimX/2, -dimY/2);
+                const extrudeSettings = { depth: dimZ, bevelEnabled: false };
+                geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                geometry.rotateX(Math.PI / 2);
+            } else if (type === 'cylinder') {
+                geometry = new THREE.CylinderGeometry(dimX/2, dimX/2, dimZ, 32);
+            } else if (type === 'sphere') {
+                geometry = new THREE.SphereGeometry(dimX/2, 32, 32);
+            }
+
+            const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 });
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            // 居中并使原点在底部中心
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+            const center = new THREE.Vector3();
+            geometry.boundingBox.getCenter(center);
+            mesh.position.sub(center);
+            mesh.position.y += (geometry.boundingBox.max.y - geometry.boundingBox.min.y) / 2;
+            
+            const group = new THREE.Group();
+            group.add(mesh);
+            
+            // 添加坐标系
+            const axes = new THREE.AxesHelper(Math.max(dimX, dimY, dimZ) * 1.5);
+            group.add(axes);
+            
+            group.userData = {
+                isShape: true,
+                shapeType: type,
+                dimX: dimX * 10,
+                dimY: dimY * 10,
+                dimZ: dimZ * 10
+            };
+            
+            const typeNames = {
+                'box': '长方体',
+                'prism': '多边形',
+                'cylinder': '圆柱体',
+                'sphere': '球体'
+            };
+            const name = (typeNames[type] || '工件') + (allModels.length + 1);
+            onModelLoaded(group, name);
+        }
+
+        function updateSelectedShape() {
+            if (!uploadedModel || !uploadedModel.userData.isShape) return;
+            
+            const dimX = (parseFloat(document.getElementById('shape-dim-x').value) || 20) / 10;
+            const dimY = (parseFloat(document.getElementById('shape-dim-y').value) || 20) / 10;
+            const dimZ = (parseFloat(document.getElementById('shape-dim-z').value) || 20) / 10;
+            
+            const type = uploadedModel.userData.shapeType;
+            let newGeometry;
+            
+            if (type === 'box') {
+                newGeometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
+            } else if (type === 'prism') {
+                const shape = new THREE.Shape();
+                shape.moveTo(-dimX/2, -dimY/2);
+                shape.lineTo(dimX/2, -dimY/2);
+                shape.lineTo(0, dimY/2);
+                shape.lineTo(-dimX/2, -dimY/2);
+                const extrudeSettings = { depth: dimZ, bevelEnabled: false };
+                newGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                newGeometry.rotateX(Math.PI / 2);
+            } else if (type === 'cylinder') {
+                newGeometry = new THREE.CylinderGeometry(dimX/2, dimX/2, dimZ, 32);
+            } else if (type === 'sphere') {
+                newGeometry = new THREE.SphereGeometry(dimX/2, 32, 32);
+            }
+            
+            // 居中并使原点在底部中心
+            newGeometry.computeBoundingBox();
+            newGeometry.computeBoundingSphere();
+            const center = new THREE.Vector3();
+            newGeometry.boundingBox.getCenter(center);
+            
+            let oldAxes = null;
+            
+            uploadedModel.children.forEach(child => {
+                if (child.isMesh) {
+                    child.geometry.dispose();
+                    child.geometry = newGeometry;
+                    child.position.copy(center).negate();
+                    child.position.y += (newGeometry.boundingBox.max.y - newGeometry.boundingBox.min.y) / 2;
+                } else if (child.type === 'AxesHelper') {
+                    oldAxes = child;
+                }
+            });
+            
+            if (oldAxes) {
+                uploadedModel.remove(oldAxes);
+                const newAxes = new THREE.AxesHelper(Math.max(dimX, dimY, dimZ) * 1.5);
+                newAxes.visible = oldAxes.visible;
+                uploadedModel.add(newAxes);
+            }
+            
+            uploadedModel.userData.dimX = dimX * 10;
+            uploadedModel.userData.dimY = dimY * 10;
+            uploadedModel.userData.dimZ = dimZ * 10;
+        }
+
+        document.getElementById('shape-dim-x').addEventListener('input', updateSelectedShape);
+        document.getElementById('shape-dim-y').addEventListener('input', updateSelectedShape);
+        document.getElementById('shape-dim-z').addEventListener('input', updateSelectedShape);
+
+        document.getElementById('btn-add-box').addEventListener('click', () => addGeometricShape('box'));
+        document.getElementById('btn-add-prism').addEventListener('click', () => addGeometricShape('prism'));
+        document.getElementById('btn-add-cylinder').addEventListener('click', () => addGeometricShape('cylinder'));
+        document.getElementById('btn-add-sphere').addEventListener('click', () => addGeometricShape('sphere'));
     }
+
+    /* ================= 工作台管理 ================= */
+    function updateWorkbench() {
+        if (workbenchGroup) {
+            workbenchGroup.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+                    else child.material.dispose();
+                }
+            });
+            scene.remove(workbenchGroup);
+        }
+
+        workbenchGroup = new THREE.Group();
+        
+        // Table Top
+        const tableShape = new THREE.Shape();
+        const halfL = workbenchParams.l / 2;
+        const halfW = workbenchParams.w / 2;
+        tableShape.moveTo(-halfL, -halfW);
+        tableShape.lineTo(halfL, -halfW);
+        tableShape.lineTo(halfL, halfW);
+        tableShape.lineTo(-halfL, halfW);
+        tableShape.lineTo(-halfL, -halfW);
+
+        // Holes
+        const holeRadius = 0.15;
+        for (let x = -Math.floor(halfL) + 1; x <= Math.floor(halfL) - 1; x += 1) {
+            for (let y = -Math.floor(halfW) + 1; y <= Math.floor(halfW) - 1; y += 1) {
+                const holePath = new THREE.Path();
+                holePath.absarc(x, y, holeRadius, 0, Math.PI * 2, true);
+                tableShape.holes.push(holePath);
+            }
+        }
+
+        const extrudeSettings = { depth: 0.5, bevelEnabled: false };
+        const tableTopGeo = new THREE.ExtrudeGeometry(tableShape, extrudeSettings);
+        tableTopGeo.rotateX(Math.PI / 2);
+        
+        const tableTop = new THREE.Mesh(
+            tableTopGeo,
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, metalness: 0.3 })
+        );
+        tableTop.position.set(0, workbenchParams.h - 0.25, 0); 
+        workbenchGroup.add(tableTop);
+        
+        // Legs
+        const legGeo = new THREE.BoxGeometry(0.4, workbenchParams.h, 0.4);
+        const legMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const legOffset = 0.5;
+        const legPositions = [
+            { x: -halfL + legOffset, z: -halfW + legOffset },
+            { x: halfL - legOffset, z: -halfW + legOffset },
+            { x: -halfL + legOffset, z: halfW - legOffset },
+            { x: halfL - legOffset, z: halfW - legOffset }
+        ];
+        legPositions.forEach(pos => {
+            const leg = new THREE.Mesh(legGeo, legMat);
+            leg.position.set(pos.x, workbenchParams.h / 2, pos.z);
+            workbenchGroup.add(leg);
+        });
+
+        workbenchGroup.position.copy(workbenchPosition);
+        scene.add(workbenchGroup);
+        
+        // If transform control was attached to workbench, re-attach it
+        if (transformControl && transformControl.object === workbenchGroup) {
+            transformControl.attach(workbenchGroup);
+        }
+    }
+
+    document.getElementById('wb-length').addEventListener('input', (e) => {
+        workbenchParams.l = parseFloat(e.target.value) / 10;
+        document.getElementById('wb-l-val').innerText = e.target.value + ' cm';
+        updateWorkbench();
+    });
+    document.getElementById('wb-width').addEventListener('input', (e) => {
+        workbenchParams.w = parseFloat(e.target.value) / 10;
+        document.getElementById('wb-w-val').innerText = e.target.value + ' cm';
+        updateWorkbench();
+    });
+    document.getElementById('wb-height').addEventListener('input', (e) => {
+        workbenchParams.h = parseFloat(e.target.value) / 10;
+        document.getElementById('wb-h-val').innerText = e.target.value + ' cm';
+        updateWorkbench();
+    });
+
+    document.getElementById('btn-move-wb').addEventListener('click', () => {
+        const btn = document.getElementById('btn-move-wb');
+        if (transformControl.object === workbenchGroup) {
+            transformControl.detach();
+            transformControl.visible = false;
+            btn.classList.remove('active');
+            document.getElementById('tp-screen').innerHTML = `WORKBENCH MOVEMENT DISABLED.`;
+        } else {
+            transformControl.attach(workbenchGroup);
+            transformControl.setMode('translate');
+            transformControl.visible = true;
+            btn.classList.add('active');
+            // Detach from model if attached
+            document.getElementById('btn-lock-model').classList.remove('active');
+            document.getElementById('tp-screen').innerHTML = `WORKBENCH MOVEMENT ENABLED. DRAG AXES TO MOVE.`;
+        }
+    });
+
+    document.getElementById('btn-reset-wb').addEventListener('click', () => {
+        workbenchPosition.set(10, 0, 0);
+        updateWorkbench();
+        document.getElementById('tp-screen').innerHTML = `WORKBENCH POSITION RESET.`;
+    });
 
     // 更新示教器屏幕显示
     function updateScreen() {
         const pos = new THREE.Vector3();
         tcp.tip.getWorldPosition(pos);
-        let html = `TCP POS:<br>X: ${(pos.x).toFixed(2)}  Y: ${(pos.z * -1).toFixed(2)}  Z: ${(pos.y).toFixed(2)}<br><br>JOINTS:<br>`;
+        let html = `TCP POS (cm):<br>X: ${(pos.x * 10).toFixed(1)}  Y: ${(pos.z * -10).toFixed(1)}  Z: ${(pos.y * 10).toFixed(1)}<br><br>JOINTS:<br>`;
         joints.forEach(j => {
             const deg = (j.group.rotation[j.axis] * 180 / Math.PI).toFixed(1);
             html += `${j.name}: ${deg}° `;
@@ -1572,7 +2098,7 @@
         
         cartesianAxes.forEach(ax => {
             if (ax.inputElement && document.activeElement !== ax.inputElement) {
-                ax.inputElement.value = (pos[ax.axis] * ax.sign).toFixed(2);
+                ax.inputElement.value = (pos[ax.axis] * ax.sign * 10).toFixed(1);
             }
         });
         
@@ -1718,24 +2244,67 @@
     }
 
     /* ================= 轨迹规划与插补 ================= */
+    let dragSrcIndex = -1;
+
     function renderPointList() {
         const list = document.getElementById('point-list');
         list.innerHTML = '';
         waypoints.forEach((wp, index) => {
             const li = document.createElement('li');
+            li.draggable = true;
             li.style.display = 'flex';
             li.style.flexDirection = 'column';
             li.style.gap = '5px';
             li.style.padding = '8px';
             li.style.borderBottom = '1px solid var(--border-color)';
-            li.style.cursor = 'pointer';
+            li.style.cursor = 'grab';
             li.style.borderRadius = '8px';
-            li.style.transition = 'background 0.2s';
+            li.style.transition = 'all 0.2s';
+            li.style.position = 'relative';
             
             if (index === selectedPointIndex) {
                 li.style.background = 'rgba(0, 123, 255, 0.15)';
                 li.style.border = '1px solid var(--accent-color)';
             }
+
+            // Drag and Drop events
+            li.ondragstart = (e) => {
+                dragSrcIndex = index;
+                e.dataTransfer.effectAllowed = 'move';
+                li.style.opacity = '0.4';
+                li.style.transform = 'scale(0.98)';
+            };
+
+            li.ondragover = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragSrcIndex !== index) {
+                    li.style.borderTop = dragSrcIndex > index ? '2px solid var(--accent-color)' : 'none';
+                    li.style.borderBottom = dragSrcIndex < index ? '2px solid var(--accent-color)' : 'none';
+                }
+            };
+
+            li.ondragleave = () => {
+                li.style.borderTop = 'none';
+                li.style.borderBottom = 'none';
+            };
+
+            li.ondragend = () => {
+                li.style.opacity = '1';
+                li.style.transform = 'scale(1)';
+                renderPointList();
+            };
+
+            li.ondrop = (e) => {
+                e.preventDefault();
+                if (dragSrcIndex !== index) {
+                    const item = waypoints.splice(dragSrcIndex, 1)[0];
+                    waypoints.splice(index, 0, item);
+                    selectedPointIndex = index;
+                    renderPointList();
+                    document.getElementById('tp-screen').innerHTML = `ITEM REORDERED.`;
+                }
+            };
 
             li.onclick = (e) => {
                 // 如果点击的是按钮或输入框，不触发选中
@@ -1823,48 +2392,6 @@
                 insertPointPrompt(index + 1);
             };
             
-            const selInsertCmd = document.createElement('select');
-            selInsertCmd.style.padding = '1px 2px';
-            selInsertCmd.style.fontSize = '11px';
-            selInsertCmd.style.margin = '0';
-            selInsertCmd.style.borderRadius = '4px';
-            selInsertCmd.style.background = 'var(--btn-bg)';
-            selInsertCmd.style.color = 'var(--text-color)';
-            selInsertCmd.style.border = '1px solid var(--border-color)';
-            selInsertCmd.style.width = '60px';
-            selInsertCmd.style.outline = 'none';
-            
-            const defaultOpt = document.createElement('option');
-            defaultOpt.text = '指令';
-            defaultOpt.value = '';
-            defaultOpt.disabled = true;
-            defaultOpt.selected = true;
-            selInsertCmd.appendChild(defaultOpt);
-            
-            const cmdOptions = [
-                { value: 'ARC_START', text: '起弧' },
-                { value: 'WEAVE_START', text: '摆弧' },
-                { value: 'WEAVE_STOP', text: '停摆' },
-                { value: 'ARC_STOP', text: '熄弧' },
-                { value: 'WAIT', text: '等待' }
-            ];
-            
-            cmdOptions.forEach(opt => {
-                const o = document.createElement('option');
-                o.value = opt.value;
-                o.innerText = opt.text;
-                selInsertCmd.appendChild(o);
-            });
-            
-            selInsertCmd.onchange = (e) => {
-                const cmd = e.target.value;
-                if (!cmd) return;
-                waypoints.splice(index + 1, 0, { type: 'cmd', cmd: cmd });
-                renderPointList();
-                document.getElementById('tp-screen').innerHTML = `COMMAND ${cmd} INSERTED AFTER P${index + 1}.`;
-            };
-            selInsertCmd.onclick = (e) => e.stopPropagation();
-            
             const btnDelete = document.createElement('button');
             btnDelete.innerText = '删除';
             btnDelete.style.padding = '2px 5px';
@@ -1881,7 +2408,6 @@
             };
             
             btnGroup.appendChild(btnInsert);
-            btnGroup.appendChild(selInsertCmd);
             btnGroup.appendChild(btnDelete);
             
             topRow.appendChild(label);
@@ -1895,17 +2421,31 @@
                 interpRow.style.gap = '5px';
                 interpRow.style.fontSize = '11px';
                 interpRow.style.marginTop = '2px';
+                interpRow.style.background = 'rgba(120,120,128,0.05)';
+                interpRow.style.padding = '4px 8px';
+                interpRow.style.borderRadius = '6px';
                 
                 const interpLabel = document.createElement('span');
-                interpLabel.innerText = '插补:';
+                interpLabel.innerText = '移动至此点方式:';
+                interpLabel.style.opacity = '0.7';
                 
                 const interpSelect = document.createElement('select');
                 interpSelect.style.fontSize = '11px';
-                interpSelect.style.padding = '1px';
+                interpSelect.style.padding = '2px 4px';
+                interpSelect.style.borderRadius = '4px';
+                interpSelect.style.background = 'var(--btn-bg)';
+                interpSelect.style.color = 'var(--text-color)';
+                interpSelect.style.border = '1px solid var(--border-color)';
+                interpSelect.style.outline = 'none';
+
                 ['ptp', 'line', 'circle'].forEach(m => {
                     const opt = document.createElement('option');
                     opt.value = m;
-                    opt.innerText = m.toUpperCase();
+                    if (m === 'circle') {
+                        opt.innerText = 'CIRCLE (辅助点)';
+                    } else {
+                        opt.innerText = m.toUpperCase();
+                    }
                     if (wp.interp === m) opt.selected = true;
                     interpSelect.appendChild(opt);
                 });
@@ -1914,6 +2454,13 @@
                     document.getElementById('tp-screen').innerHTML = `P${index + 1} INTERP SET TO ${e.target.value.toUpperCase()}.`;
                 };
                 
+                // 第一个点通常是起始点，不需要插补方式（或者说它是PTP到起始点）
+                // 但为了统一，我们允许设置，或者如果它是第一个点，我们可以提示它是起始点
+                if (index === 0) {
+                    interpLabel.innerText = '起始点位';
+                    interpSelect.style.display = 'none';
+                }
+
                 interpRow.appendChild(interpLabel);
                 interpRow.appendChild(interpSelect);
                 li.appendChild(interpRow);
@@ -1922,6 +2469,7 @@
                 inputRow.style.display = 'flex';
                 inputRow.style.gap = '5px';
                 inputRow.style.justifyContent = 'space-between';
+                inputRow.style.marginTop = '4px';
                 
                 const createInput = (val, axis, updateFn) => {
                     const wrapper = document.createElement('div');
@@ -1931,14 +2479,19 @@
                     const lbl = document.createElement('span');
                     lbl.innerText = axis + ':';
                     lbl.style.marginRight = '2px';
+                    lbl.style.opacity = '0.6';
                     const inp = document.createElement('input');
                     inp.type = 'number';
-                    inp.step = '0.1';
-                    inp.value = val.toFixed(2);
-                    inp.style.width = '60px';
+                    inp.step = '1';
+                    inp.value = (val * 10).toFixed(1);
+                    inp.style.width = '55px';
                     inp.style.fontSize = '11px';
                     inp.style.padding = '2px';
-                    inp.onchange = (e) => updateFn(parseFloat(e.target.value));
+                    inp.style.background = 'rgba(120,120,128,0.1)';
+                    inp.style.border = 'none';
+                    inp.style.borderRadius = '4px';
+                    inp.style.color = 'var(--text-color)';
+                    inp.onchange = (e) => updateFn(parseFloat(e.target.value) / 10);
                     wrapper.appendChild(lbl);
                     wrapper.appendChild(inp);
                     return wrapper;
@@ -1993,9 +2546,9 @@
         // 如果有上一个点，可以使用上一个点的坐标作为默认值
         if (insertIndex > 0 && waypoints[insertIndex - 1]) {
             const prevWp = waypoints[insertIndex - 1];
-            document.getElementById('modal-input-x').value = prevWp.pos.x.toFixed(2);
-            document.getElementById('modal-input-y').value = (prevWp.pos.z * -1).toFixed(2);
-            document.getElementById('modal-input-z').value = prevWp.pos.y.toFixed(2);
+            document.getElementById('modal-input-x').value = (prevWp.pos.x * 10).toFixed(1);
+            document.getElementById('modal-input-y').value = (prevWp.pos.z * -10).toFixed(1);
+            document.getElementById('modal-input-z').value = (prevWp.pos.y * 10).toFixed(1);
         } else {
             document.getElementById('modal-input-x').value = '0';
             document.getElementById('modal-input-y').value = '0';
@@ -2006,9 +2559,9 @@
     document.getElementById('modal-btn-current').addEventListener('click', () => {
         const pos = new THREE.Vector3();
         tcp.tip.getWorldPosition(pos);
-        document.getElementById('modal-input-x').value = pos.x.toFixed(2);
-        document.getElementById('modal-input-y').value = (pos.z * -1).toFixed(2);
-        document.getElementById('modal-input-z').value = pos.y.toFixed(2);
+        document.getElementById('modal-input-x').value = (pos.x * 10).toFixed(1);
+        document.getElementById('modal-input-y').value = (pos.z * -10).toFixed(1);
+        document.getElementById('modal-input-z').value = (pos.y * 10).toFixed(1);
     });
 
     document.getElementById('modal-btn-cancel').addEventListener('click', () => {
@@ -2023,9 +2576,9 @@
         
         document.getElementById('insert-modal').style.display = 'none';
         
-        const x = parseFloat(xStr);
-        const y = parseFloat(yStr);
-        const z = parseFloat(zStr);
+        const x = parseFloat(xStr) / 10;
+        const y = parseFloat(yStr) / 10;
+        const z = parseFloat(zStr) / 10;
         
         if (isNaN(x) || isNaN(y) || isNaN(z)) {
             document.getElementById('tp-screen').innerHTML = `INSERT CANCELLED: INVALID INPUT.`;
@@ -2037,7 +2590,8 @@
         
         if (solveIK(targetPos)) {
             const newAngles = joints.map(j => j.group.rotation[j.axis]);
-            const interp = document.querySelector('input[name="interp"]:checked').value;
+            // 默认使用 PTP 插补，用户可以在列表中修改
+            const interp = 'ptp';
             waypoints.splice(currentInsertIndex, 0, { type: 'point', pos: targetPos.clone(), angles: newAngles, interp: interp });
             document.getElementById('tp-screen').innerHTML = `ITEM INSERTED AT ${currentInsertIndex + 1}.`;
         } else {
@@ -2056,7 +2610,8 @@
         const pos = new THREE.Vector3();
         tcp.tip.getWorldPosition(pos);
         const jointAngles = joints.map(j => j.group.rotation[j.axis]);
-        const interp = document.querySelector('input[name="interp"]:checked').value;
+        // 默认使用 PTP 插补
+        const interp = 'ptp';
         
         const wp = { type: 'point', pos: pos.clone(), angles: [...jointAngles], interp: interp };
         
@@ -2124,7 +2679,8 @@
                         if (item.type === 'point' && item.pos) {
                             return {
                                 ...item,
-                                pos: new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z)
+                                pos: new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z),
+                                angles: item.angles || [] // 确保包含关节角度信息
                             };
                         }
                         return item;
@@ -2152,7 +2708,8 @@
     }
 
     function startRun() {
-        runState.mode = document.querySelector('input[name="interp"]:checked').value;
+        // runState.mode 仅作为全局默认值，现在优先使用点位自带的 interp
+        runState.mode = 'ptp'; 
         runState.weldMode = document.querySelector('input[name="weld"]:checked').value;
         
         const points = waypoints.filter(wp => wp.type === 'point');
@@ -2456,7 +3013,7 @@
                             if (Math.abs(tangent.y) > 0.9) up.set(1, 0, 0);
                             const weaveDir = new THREE.Vector3().crossVectors(tangent, up).normalize();
                             
-                            const amplitude = 0.4; 
+                            const amplitude = runState.weaveAmplitude; 
                             const frequency = 15; 
                             // 使用一次函数（三角波/折线）代替正弦波，实现简单明了的折线摆动
                             const phase = (runState.progress * frequency + 0.75) % 1;
@@ -2474,8 +3031,12 @@
                     return;
                 }
             } else {
-                stopRun();
-                return;
+                // 如果没有 P3，圆弧退化为直线到 P2
+                targetPos.lerpVectors(p1.pos, p2.pos, runState.progress);
+                if (!solveIK(targetPos)) {
+                    stopRun();
+                    return;
+                }
             }
         }
 
@@ -2485,7 +3046,7 @@
         trajPoints.push(currentPos.clone());
         
         // 限制轨迹点数量，防止内存溢出
-        if (trajPoints.length > 2000) trajPoints.shift();
+        if (trajPoints.length > 50000) trajPoints.shift();
         
         trajGeometry.setFromPoints(trajPoints);
         
