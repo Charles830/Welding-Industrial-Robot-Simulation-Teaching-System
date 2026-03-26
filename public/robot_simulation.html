@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>六轴工业焊接机器人仿真系统</title>
+    <title>TwinWeld：基于WebGL的轻量化焊接机器人数字孪生仿真系统</title>
     <style>
         /* ================= 核心主题与 CSS 变量 ================= */
         :root {
@@ -252,9 +252,33 @@
 </head>
 <body>
 
+<!-- 登录/注册遮罩层 -->
+<div id="auth-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f5f5f7; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <h1 style="color: #1c1c1e; margin-bottom: 40px; font-size: 28px; font-weight: 600; letter-spacing: 2px; text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.05);">TwinWeld：基于WebGL的轻量化焊接机器人数字孪生仿真系统</h1>
+    <div style="background: #ffffff; padding: 35px 30px; border-radius: 16px; width: 340px; box-shadow: 0 12px 40px rgba(0,0,0,0.08); border: 1px solid #e5e5ea;">
+        <h2 style="color: #1c1c1e; text-align: center; margin-top: 0; margin-bottom: 24px; font-size: 20px; font-weight: 500;" id="auth-title">系统登录</h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 24px;">
+            <button id="tab-login" style="flex: 1; padding: 10px; background: #0a84ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s;">登录</button>
+            <button id="tab-register" style="flex: 1; padding: 10px; background: transparent; color: #8e8e93; border: 1px solid #e5e5ea; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s;">注册</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <input type="text" id="auth-username" placeholder="账号" style="padding: 12px 14px; border-radius: 8px; border: 1px solid #e5e5ea; background: #f2f2f7; color: #1c1c1e; outline: none; font-size: 14px; transition: border-color 0.2s;">
+            <input type="password" id="auth-password" placeholder="密码" style="padding: 12px 14px; border-radius: 8px; border: 1px solid #e5e5ea; background: #f2f2f7; color: #1c1c1e; outline: none; font-size: 14px; transition: border-color 0.2s;">
+            <button id="btn-auth-submit" style="padding: 12px; background: #0a84ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 8px; font-size: 15px; box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3); transition: transform 0.1s, box-shadow 0.1s;">登录</button>
+        </div>
+        <div id="auth-error" style="color: #ff3b30; font-size: 13px; margin-top: 16px; text-align: center; min-height: 18px; font-weight: 500;"></div>
+    </div>
+    <div style="margin-top: 50px; color: #8e8e93; font-size: 12px; letter-spacing: 0.5px;">&copy; 2026 Intelligent Welding Simulation Platform. All rights reserved.</div>
+</div>
+
 <div id="app">
     <!-- 左侧 3D 视图 -->
     <div id="canvas-container">
+        <div id="top-right-controls" style="position: absolute; top: 15px; right: 15px; z-index: 5; display: flex; gap: 8px;">
+            <button id="btn-screenshot" class="view-btn" title="截图" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--panel-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; color: var(--text-color); transition: all 0.2s;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </button>
+        </div>
         <div id="overlay-ui">
             <div id="status-panel" style="background: var(--screen-bg); color: var(--screen-text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; padding: 12px 16px; border-radius: 12px; font-size: 12px; line-height: 1.4; box-shadow: 0 4px 16px rgba(0,0,0,0.05); border: 1px solid var(--border-color); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); margin: 0; height: auto; min-width: 200px;">
                 TCP POS:<br>X: 0.00  Y: 0.00  Z: 0.00<br><br>JOINTS:<br>J1: 0.0° J2: 0.0° J3: 0.0° J4: 0.0° J5: 0.0° J6: 0.0°
@@ -463,11 +487,23 @@
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+                <div style="display: flex; gap: 4px; margin-bottom: 10px; align-items: center;">
+                    <span style="font-size: 11px; white-space: nowrap;">坡口:</span>
+                    <select id="shape-groove" style="flex: 1; background: rgba(0,0,0,0.2); color: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 2px 4px; font-size: 11px; outline: none;">
+                        <option value="none">无</option>
+                        <option value="x+">X+ 边 (V型)</option>
+                        <option value="x-">X- 边 (V型)</option>
+                        <option value="y+">Y+ 边 (V型)</option>
+                        <option value="y-">Y- 边 (V型)</option>
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
                     <button id="btn-add-box" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">长方体</button>
                     <button id="btn-add-prism" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">三棱柱</button>
                     <button id="btn-add-cylinder" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">圆柱体</button>
                     <button id="btn-add-sphere" class="view-btn" style="width: 100%; height: 32px; font-size: 11px;">球体</button>
+                    <button id="btn-add-plate" class="view-btn" style="width: 100%; height: 32px; font-size: 11px; grid-column: span 2;">薄板 (带坡口)</button>
                 </div>
             </fieldset>
 
@@ -498,16 +534,30 @@
                 <div style="font-size: 11px; font-weight: 600; opacity: 0.5; margin-bottom: 2px; padding-left: 2px; margin-top: 4px;">位置与吸附</div>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
                     <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
-                        <span>X(cm):</span>
-                        <input type="number" id="model-pos-x" value="100" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                        <span>X(mm):</span>
+                        <input type="number" id="model-pos-x" value="1000" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
                     </div>
                     <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
-                        <span>Y(cm):</span>
+                        <span>Y(mm):</span>
                         <input type="number" id="model-pos-y" value="0" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
                     </div>
                     <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
-                        <span>Z(cm):</span>
-                        <input type="number" id="model-pos-z" value="40" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                        <span>Z(mm):</span>
+                        <input type="number" id="model-pos-z" value="400" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 2px;">
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Rx(°):</span>
+                        <input type="number" id="model-rot-x" value="0" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Ry(°):</span>
+                        <input type="number" id="model-rot-y" value="0" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
+                    </div>
+                    <div class="view-btn" style="width: 100%; height: 32px; font-size: 10px; padding: 0 4px; justify-content: space-between;">
+                        <span>Rz(°):</span>
+                        <input type="number" id="model-rot-z" value="0" step="1" style="width: 40px; background: transparent; color: inherit; border: none; text-align: right; outline: none; font-size: 10px;">
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 0 4px;">
@@ -603,6 +653,101 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script>
+    /* ================= 登录与注册 ================= */
+    let authMode = 'login';
+    const authOverlay = document.getElementById('auth-overlay');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const authTitle = document.getElementById('auth-title');
+    const btnAuthSubmit = document.getElementById('btn-auth-submit');
+    const authUsername = document.getElementById('auth-username');
+    const authPassword = document.getElementById('auth-password');
+    const authError = document.getElementById('auth-error');
+
+    function switchAuthMode(mode) {
+        authMode = mode;
+        authError.innerText = '';
+        if (mode === 'login') {
+            authTitle.innerText = '系统登录';
+            btnAuthSubmit.innerText = '登录';
+            tabLogin.style.background = '#0a84ff';
+            tabLogin.style.color = 'white';
+            tabLogin.style.border = 'none';
+            tabRegister.style.background = 'transparent';
+            tabRegister.style.color = '#8e8e93';
+            tabRegister.style.border = '1px solid #e5e5ea';
+        } else {
+            authTitle.innerText = '账号注册';
+            btnAuthSubmit.innerText = '注册';
+            tabRegister.style.background = '#0a84ff';
+            tabRegister.style.color = 'white';
+            tabRegister.style.border = 'none';
+            tabLogin.style.background = 'transparent';
+            tabLogin.style.color = '#8e8e93';
+            tabLogin.style.border = '1px solid #e5e5ea';
+        }
+    }
+
+    tabLogin.addEventListener('click', () => switchAuthMode('login'));
+    tabRegister.addEventListener('click', () => switchAuthMode('register'));
+
+    btnAuthSubmit.addEventListener('click', () => {
+        const username = authUsername.value.trim();
+        const password = authPassword.value.trim();
+        
+        if (!username || !password) {
+            authError.style.color = '#ff453a';
+            authError.innerText = '请输入账号和密码';
+            return;
+        }
+
+        if (authMode === 'login') {
+            if (username === 'admin' && password === 'admin123') {
+                authOverlay.style.display = 'none';
+                return;
+            }
+            
+            const users = JSON.parse(localStorage.getItem('robot_users') || '{}');
+            if (users[username] && users[username] === password) {
+                authOverlay.style.display = 'none';
+            } else {
+                authError.style.color = '#ff453a';
+                authError.innerText = '账号或密码错误';
+            }
+        } else {
+            if (username === 'admin') {
+                authError.style.color = '#ff453a';
+                authError.innerText = '不能注册管理员账号';
+                return;
+            }
+            const users = JSON.parse(localStorage.getItem('robot_users') || '{}');
+            if (users[username]) {
+                authError.style.color = '#ff453a';
+                authError.innerText = '该账号已存在';
+            } else {
+                users[username] = password;
+                localStorage.setItem('robot_users', JSON.stringify(users));
+                authError.style.color = '#32d74b';
+                authError.innerText = '注册成功，请登录';
+                setTimeout(() => {
+                    authError.style.color = '#ff453a';
+                    switchAuthMode('login');
+                }, 1500);
+            }
+        }
+    });
+
+    authPassword.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            btnAuthSubmit.click();
+        }
+    });
+    authUsername.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            authPassword.focus();
+        }
+    });
+
     // 全局：按回车键时取消输入框焦点，触发 change 事件
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type === 'number') {
@@ -711,7 +856,7 @@
         camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
         camera.position.set(20, 15, 30);
 
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
@@ -756,6 +901,7 @@
 
         // 模型变换控制
         transformControl = new THREE.TransformControls(camera, renderer.domElement);
+        transformControl.setSpace('local'); // 设置为局部坐标系，使 Z 轴指向模型厚度方向
         transformControl.addEventListener('dragging-changed', function (event) {
             controls.enabled = !event.value;
         });
@@ -763,7 +909,7 @@
             if (uploadedModel && transformControl.object === uploadedModel) {
                 // 网格吸附逻辑
                 if (document.getElementById('toggle-grid-snap').checked) {
-                    const snap = 0.5; // 吸附步长
+                    const snap = 0.01; // 1mm 吸附步长 (0.01 在仿真单位中)
                     uploadedModel.position.x = Math.round(uploadedModel.position.x / snap) * snap;
                     uploadedModel.position.y = Math.max(0, Math.round(uploadedModel.position.y / snap) * snap);
                     uploadedModel.position.z = Math.round(uploadedModel.position.z / snap) * snap;
@@ -779,9 +925,36 @@
                     const posX = document.getElementById('model-pos-x');
                     const posY = document.getElementById('model-pos-y');
                     const posZ = document.getElementById('model-pos-z');
-                    if (posX && document.activeElement !== posX) posX.value = (uploadedModel.position.x * 10).toFixed(1);
-                    if (posY && document.activeElement !== posY) posY.value = (uploadedModel.position.z * -10).toFixed(1);
-                    if (posZ && document.activeElement !== posZ) posZ.value = (uploadedModel.position.y * 10).toFixed(1);
+                    if (posX && document.activeElement !== posX) posX.value = (uploadedModel.position.x * 100).toFixed(0);
+                    if (posY && document.activeElement !== posY) posY.value = (uploadedModel.position.z * -100).toFixed(0);
+                    if (posZ && document.activeElement !== posZ) posZ.value = (uploadedModel.position.y * 100).toFixed(0);
+                } else if (transformControl.getMode() === 'rotate') {
+                    // 软吸附逻辑 (接近 0, 90, 180, 270 时吸附)
+                    if (document.getElementById('toggle-grid-snap').checked) {
+                        const snapAngle = Math.PI / 2; // 90 degrees
+                        const threshold = THREE.MathUtils.degToRad(5); // 5 degrees threshold
+                        
+                        ['x', 'y', 'z'].forEach(axis => {
+                            let angle = uploadedModel.rotation[axis];
+                            if (axis === 'x') angle += Math.PI / 2; // 补偿初始旋转
+                            let normalized = (angle % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+                            let closestSnap = Math.round(normalized / snapAngle) * snapAngle;
+                            if (Math.abs(normalized - closestSnap) < threshold) {
+                                let diff = closestSnap - normalized;
+                                if (diff > Math.PI) diff -= Math.PI * 2;
+                                if (diff < -Math.PI) diff += Math.PI * 2;
+                                uploadedModel.rotation[axis] += diff;
+                            }
+                        });
+                    }
+
+                    // 更新角度输入框
+                    const rotX = document.getElementById('model-rot-x');
+                    const rotY = document.getElementById('model-rot-y');
+                    const rotZ = document.getElementById('model-rot-z');
+                    if (rotX && document.activeElement !== rotX) rotX.value = (THREE.MathUtils.radToDeg(uploadedModel.rotation.x) + 90).toFixed(1);
+                    if (rotY && document.activeElement !== rotY) rotY.value = THREE.MathUtils.radToDeg(uploadedModel.rotation.y).toFixed(1);
+                    if (rotZ && document.activeElement !== rotZ) rotZ.value = THREE.MathUtils.radToDeg(uploadedModel.rotation.z).toFixed(1);
                 }
             } else if (workbenchGroup && transformControl.object === workbenchGroup) {
                 workbenchPosition.copy(workbenchGroup.position);
@@ -950,6 +1123,17 @@
         });
         document.getElementById('btn-view-i').addEventListener('click', () => {
             setView(new THREE.Vector3(16, 16, 16));
+        });
+
+        // 截图功能
+        document.getElementById('btn-screenshot').addEventListener('click', () => {
+            // 强制渲染一帧以确保 canvas 内容是最新的
+            renderer.render(scene, camera);
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'TwinWeld-Screenshot-' + new Date().toISOString().replace(/[:.]/g, '-') + '.png';
+            link.href = dataURL;
+            link.click();
         });
     }
 
@@ -1455,22 +1639,25 @@
         const posXInput = document.getElementById('model-pos-x');
         const posYInput = document.getElementById('model-pos-y');
         const posZInput = document.getElementById('model-pos-z');
+        const rotXInput = document.getElementById('model-rot-x');
+        const rotYInput = document.getElementById('model-rot-y');
+        const rotZInput = document.getElementById('model-rot-z');
 
         function updateModelPosition() {
             if (!uploadedModel) return;
-            let x = (parseFloat(posXInput.value) || 0) / 10;
-            let y = (parseFloat(posYInput.value) || 0) / 10;
-            let z = (parseFloat(posZInput.value) || 0) / 10;
+            let x = (parseFloat(posXInput.value) || 0) / 100;
+            let y = (parseFloat(posYInput.value) || 0) / 100;
+            let z = (parseFloat(posZInput.value) || 0) / 100;
             
             // 网格吸附逻辑
             if (document.getElementById('toggle-grid-snap').checked) {
-                const snap = 0.5;
+                const snap = 0.01; // 1mm
                 x = Math.round(x / snap) * snap;
                 y = Math.round(y / snap) * snap;
                 z = Math.max(0, Math.round(z / snap) * snap);
-                posXInput.value = (x * 10).toFixed(1);
-                posYInput.value = (y * 10).toFixed(1);
-                posZInput.value = (z * 10).toFixed(1);
+                posXInput.value = (x * 100).toFixed(0);
+                posYInput.value = (y * 100).toFixed(0);
+                posZInput.value = (z * 100).toFixed(0);
             }
 
             uploadedModel.position.x = x;
@@ -1478,62 +1665,110 @@
             uploadedModel.position.y = z;
         }
 
+        function updateModelRotation() {
+            if (!uploadedModel) return;
+            let rx = parseFloat(rotXInput.value) || 0;
+            let ry = parseFloat(rotYInput.value) || 0;
+            let rz = parseFloat(rotZInput.value) || 0;
+            
+            // 角度吸附逻辑
+            if (document.getElementById('toggle-grid-snap').checked) {
+                const snap = 90;
+                rx = Math.round(rx / snap) * snap;
+                ry = Math.round(ry / snap) * snap;
+                rz = Math.round(rz / snap) * snap;
+                rotXInput.value = rx.toFixed(1);
+                rotYInput.value = ry.toFixed(1);
+                rotZInput.value = rz.toFixed(1);
+            }
+
+            uploadedModel.rotation.set(
+                THREE.MathUtils.degToRad(rx) - Math.PI / 2,
+                THREE.MathUtils.degToRad(ry),
+                THREE.MathUtils.degToRad(rz)
+            );
+        }
+
         posXInput.addEventListener('input', updateModelPosition);
         posYInput.addEventListener('input', updateModelPosition);
         posZInput.addEventListener('input', updateModelPosition);
+        rotXInput.addEventListener('input', updateModelRotation);
+        rotYInput.addEventListener('input', updateModelRotation);
+        rotZInput.addEventListener('input', updateModelRotation);
 
         function processModel(model) {
             // 1. 移除地平面 (Heuristic: flat meshes at the bottom)
-            const meshesToRemove = [];
-            
-            // First pass to get overall bounding box
-            const overallBox = new THREE.Box3().setFromObject(model);
-            const overallSize = overallBox.getSize(new THREE.Vector3());
-            const bottomY = overallBox.min.y;
-            const overallArea = overallSize.x * overallSize.z;
+            // 如果是几何体形状，跳过移除地平面逻辑，避免误删
+            if (!model.userData.isShape) {
+                const meshesToRemove = [];
+                
+                // First pass to get overall bounding box
+                const overallBox = new THREE.Box3().setFromObject(model);
+                const overallSize = overallBox.getSize(new THREE.Vector3());
+                const bottomY = overallBox.min.y;
+                const overallArea = overallSize.x * overallSize.z;
 
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    const box = new THREE.Box3().setFromObject(child);
-                    const size = box.getSize(new THREE.Vector3());
-                    const height = size.y;
-                    const area = size.x * size.z;
-                    
-                    // Heuristic: If it's very flat and near the bottom, or covers a large area relative to the model
-                    const isFlat = height < overallSize.y * 0.02 || height < 0.05;
-                    const isAtBottom = Math.abs(box.min.y - bottomY) < 0.05;
-                    const isLarge = area > overallArea * 0.7;
-                    const hasGroundName = /ground|floor|plane|地面|地板/i.test(child.name);
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        const box = new THREE.Box3().setFromObject(child);
+                        const size = box.getSize(new THREE.Vector3());
+                        const height = size.y;
+                        const area = size.x * size.z;
+                        
+                        // Heuristic: If it's very flat and near the bottom, or covers a large area relative to the model
+                        const isFlat = height < overallSize.y * 0.02 || height < 0.05;
+                        const isAtBottom = Math.abs(box.min.y - bottomY) < 0.05;
+                        const isLarge = area > overallArea * 0.7;
+                        const hasGroundName = /ground|floor|plane|地面|地板/i.test(child.name);
 
-                    if ((isFlat && isAtBottom && isLarge) || hasGroundName) {
-                        meshesToRemove.push(child);
+                        if ((isFlat && isAtBottom && isLarge) || hasGroundName) {
+                            meshesToRemove.push(child);
+                        }
                     }
-                }
-            });
+                });
 
-            meshesToRemove.forEach(mesh => {
-                if (mesh.parent) mesh.parent.remove(mesh);
-            });
+                meshesToRemove.forEach(mesh => {
+                    if (mesh.parent) mesh.parent.remove(mesh);
+                });
+            }
 
-            // 2. 居中并放置在地面上
+            // 1.5 自动调整朝向：确保薄板平铺（最小维度沿 Z 轴）
+            const initialBox = new THREE.Box3().setFromObject(model);
+            const size = initialBox.getSize(new THREE.Vector3());
+            
+            // 找出最小的维度，并将其旋转到 Z 轴
+            if (size.x < size.z && size.x < size.y) {
+                // X 轴最小，绕 Y 轴旋转 90 度使 X 变为 Z
+                model.rotateY(-Math.PI / 2);
+            } else if (size.y < size.z && size.y < size.x) {
+                // Y 轴最小，绕 X 轴旋转 90 度使 Y 变为 Z
+                model.rotateX(Math.PI / 2);
+            }
+            // 如果 Z 轴已经是最小的，说明已经平铺，无需旋转
+
+            // 2. 居中并放置在地面上 (此时 Z 是厚度方向)
             const box = new THREE.Box3().setFromObject(model);
             const center = new THREE.Vector3();
             box.getCenter(center);
             
-            // Move model so its center (x,z) is at 0 and its bottom is at 0
+            // Move model so its center (x,y) is at 0 and its bottom is at 0
             model.position.x = -center.x;
-            model.position.z = -center.z;
-            model.position.y = -box.min.y;
+            model.position.y = -center.y;
+            model.position.z = -box.min.z;
 
             // 3. 包装在组中以便变换
             const group = new THREE.Group();
             group.add(model);
+            group.userData = Object.assign({}, model.userData); // 继承 userData
             
-            // 4. 添加坐标系 (在模型底部中心)
-            modelAxes = new THREE.AxesHelper(5);
-            group.add(modelAxes);
+            // 4. 初始旋转使 Z 向上 (对齐机械臂 Z 轴)
+            group.rotation.x = -Math.PI / 2;
+            
+            // 5. 添加坐标系 (在模型底部中心)
+            const axes = new THREE.AxesHelper(Math.max(size.x, size.y, size.z) * 1.5);
+            group.add(axes);
             const axesVisible = document.getElementById('btn-toggle-axes').classList.contains('active');
-            modelAxes.visible = axesVisible;
+            axes.visible = axesVisible;
             if (globalAxesHelper) globalAxesHelper.visible = axesVisible;
 
             return group;
@@ -1596,9 +1831,14 @@
             scaleInput.value = model.scale.x.toFixed(2);
             
             // 更新位置输入框
-            posXInput.value = (model.position.x * 10).toFixed(1);
-            posYInput.value = (model.position.z * -10).toFixed(1);
-            posZInput.value = (model.position.y * 10).toFixed(1);
+            posXInput.value = (model.position.x * 100).toFixed(0);
+            posYInput.value = (model.position.z * -100).toFixed(0);
+            posZInput.value = (model.position.y * 100).toFixed(0);
+            
+            // 更新角度输入框
+            rotXInput.value = (THREE.MathUtils.radToDeg(model.rotation.x) + 90).toFixed(1);
+            rotYInput.value = THREE.MathUtils.radToDeg(model.rotation.y).toFixed(1);
+            rotZInput.value = THREE.MathUtils.radToDeg(model.rotation.z).toFixed(1);
             
             // 更新锁定按钮状态
             const isLocked = model.userData.isLocked || false;
@@ -1628,13 +1868,21 @@
                 document.getElementById('shape-dim-x').value = model.userData.dimX;
                 document.getElementById('shape-dim-y').value = model.userData.dimY;
                 document.getElementById('shape-dim-z').value = model.userData.dimZ;
+                if (model.userData.groove) {
+                    document.getElementById('shape-groove').value = model.userData.groove;
+                } else {
+                    document.getElementById('shape-groove').value = 'none';
+                }
             }
         }
 
         function onModelLoaded(model, name) {
             if (!model) return;
             
-            model.position.set(10, 0, 0); // 放在工作台上
+            // 高精度对齐工作台上表面 (workbenchParams.h)
+            // X=1000mm, Y=0mm, Z=400mm (工作台高度)
+            // 对应世界坐标: X=10, Z=0, Y=4 (因为 Y 是 Up)
+            model.position.set(10, workbenchParams.h, 0); 
             scene.add(model);
             allModels.push(model);
             if (name) model.name = name;
@@ -1866,42 +2114,51 @@
                 geometry = new THREE.CylinderGeometry(dimX/2, dimX/2, dimZ, 32);
             } else if (type === 'sphere') {
                 geometry = new THREE.SphereGeometry(dimX/2, 32, 32);
+            } else if (type === 'plate') {
+                geometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
+                const groove = document.getElementById('shape-groove').value;
+                if (groove !== 'none') {
+                    const pos = geometry.attributes.position;
+                    for (let i = 0; i < pos.count; i++) {
+                        let x = pos.getX(i);
+                        let y = pos.getY(i);
+                        let z = pos.getZ(i);
+                        // BoxGeometry in Three.js has Z as depth (thickness), Y as height, X as width.
+                        // Wait, BoxGeometry(width, height, depth) -> X, Y, Z.
+                        // So dimX is width (X), dimY is height (Y), dimZ is depth (Z).
+                        // Top vertices have Z > 0.
+                        if (groove === 'x+' && x > 0 && z > 0) x -= dimZ;
+                        if (groove === 'x-' && x < 0 && z > 0) x += dimZ;
+                        if (groove === 'y+' && y > 0 && z > 0) y -= dimZ;
+                        if (groove === 'y-' && y < 0 && z > 0) y += dimZ;
+                        pos.setX(i, x);
+                        pos.setY(i, y);
+                    }
+                    geometry.computeVertexNormals();
+                }
             }
 
             const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 });
             const mesh = new THREE.Mesh(geometry, material);
             
-            // 居中并使原点在底部中心
-            geometry.computeBoundingBox();
-            geometry.computeBoundingSphere();
-            const center = new THREE.Vector3();
-            geometry.boundingBox.getCenter(center);
-            mesh.position.sub(center);
-            mesh.position.y += (geometry.boundingBox.max.y - geometry.boundingBox.min.y) / 2;
-            
-            const group = new THREE.Group();
-            group.add(mesh);
-            
-            // 添加坐标系
-            const axes = new THREE.AxesHelper(Math.max(dimX, dimY, dimZ) * 1.5);
-            group.add(axes);
-            
-            group.userData = {
+            mesh.userData = {
                 isShape: true,
                 shapeType: type,
                 dimX: dimX * 10,
                 dimY: dimY * 10,
-                dimZ: dimZ * 10
+                dimZ: dimZ * 10,
+                groove: type === 'plate' ? document.getElementById('shape-groove').value : 'none'
             };
             
             const typeNames = {
                 'box': '长方体',
                 'prism': '多边形',
                 'cylinder': '圆柱体',
-                'sphere': '球体'
+                'sphere': '球体',
+                'plate': '薄板'
             };
             const name = (typeNames[type] || '工件') + (allModels.length + 1);
-            onModelLoaded(group, name);
+            onModelLoaded(processModel(mesh), name);
         }
 
         function updateSelectedShape() {
@@ -1929,11 +2186,40 @@
                 newGeometry = new THREE.CylinderGeometry(dimX/2, dimX/2, dimZ, 32);
             } else if (type === 'sphere') {
                 newGeometry = new THREE.SphereGeometry(dimX/2, 32, 32);
+            } else if (type === 'plate') {
+                newGeometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
+                const groove = document.getElementById('shape-groove').value;
+                if (groove !== 'none') {
+                    const pos = newGeometry.attributes.position;
+                    for (let i = 0; i < pos.count; i++) {
+                        let x = pos.getX(i);
+                        let y = pos.getY(i);
+                        let z = pos.getZ(i);
+                        if (groove === 'x+' && x > 0 && z > 0) x -= dimZ;
+                        if (groove === 'x-' && x < 0 && z > 0) x += dimZ;
+                        if (groove === 'y+' && y > 0 && z > 0) y -= dimZ;
+                        if (groove === 'y-' && y < 0 && z > 0) y += dimZ;
+                        pos.setX(i, x);
+                        pos.setY(i, y);
+                    }
+                    newGeometry.computeVertexNormals();
+                }
             }
             
             // 居中并使原点在底部中心
             newGeometry.computeBoundingBox();
             newGeometry.computeBoundingSphere();
+            const size = new THREE.Vector3();
+            newGeometry.boundingBox.getSize(size);
+            
+            // 自动调整朝向：确保薄板平铺（最小维度沿 Z 轴）
+            if (size.x < size.z && size.x < size.y) {
+                newGeometry.rotateY(-Math.PI / 2);
+            } else if (size.y < size.z && size.y < size.x) {
+                newGeometry.rotateX(Math.PI / 2);
+            }
+            newGeometry.computeBoundingBox(); // 旋转后重新计算
+            
             const center = new THREE.Vector3();
             newGeometry.boundingBox.getCenter(center);
             
@@ -1944,7 +2230,7 @@
                     child.geometry.dispose();
                     child.geometry = newGeometry;
                     child.position.copy(center).negate();
-                    child.position.y += (newGeometry.boundingBox.max.y - newGeometry.boundingBox.min.y) / 2;
+                    child.position.z += (newGeometry.boundingBox.max.z - newGeometry.boundingBox.min.z) / 2;
                 } else if (child.type === 'AxesHelper') {
                     oldAxes = child;
                 }
@@ -1952,7 +2238,9 @@
             
             if (oldAxes) {
                 uploadedModel.remove(oldAxes);
-                const newAxes = new THREE.AxesHelper(Math.max(dimX, dimY, dimZ) * 1.5);
+                const newSize = new THREE.Vector3();
+                newGeometry.boundingBox.getSize(newSize);
+                const newAxes = new THREE.AxesHelper(Math.max(newSize.x, newSize.y, newSize.z) * 1.5);
                 newAxes.visible = oldAxes.visible;
                 uploadedModel.add(newAxes);
             }
@@ -1960,16 +2248,25 @@
             uploadedModel.userData.dimX = dimX * 10;
             uploadedModel.userData.dimY = dimY * 10;
             uploadedModel.userData.dimZ = dimZ * 10;
+            if (type === 'plate') {
+                uploadedModel.userData.groove = document.getElementById('shape-groove').value;
+            }
         }
 
         document.getElementById('shape-dim-x').addEventListener('input', updateSelectedShape);
         document.getElementById('shape-dim-y').addEventListener('input', updateSelectedShape);
         document.getElementById('shape-dim-z').addEventListener('input', updateSelectedShape);
+        document.getElementById('shape-groove').addEventListener('change', updateSelectedShape);
 
         document.getElementById('btn-add-box').addEventListener('click', () => addGeometricShape('box'));
         document.getElementById('btn-add-prism').addEventListener('click', () => addGeometricShape('prism'));
         document.getElementById('btn-add-cylinder').addEventListener('click', () => addGeometricShape('cylinder'));
         document.getElementById('btn-add-sphere').addEventListener('click', () => addGeometricShape('sphere'));
+        document.getElementById('btn-add-plate').addEventListener('click', () => {
+            // 设置薄板的默认厚度
+            document.getElementById('shape-dim-z').value = 2;
+            addGeometricShape('plate');
+        });
     }
 
     /* ================= 工作台管理 ================= */
