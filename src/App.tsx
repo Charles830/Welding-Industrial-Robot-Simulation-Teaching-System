@@ -8,7 +8,7 @@ export default function App() {
     <iframe 
       src="/robot_simulation.html" 
       style={{ width: '100vw', height: '100vh', border: 'none', display: 'block', backgroundColor: '#FFFFFF' }} 
-      title="TwinWeld：基于WebGL的轻量化焊接机器人数字孪生仿真系统"
+      title="TwinWeld：基于AI大语言模型设计的焊接机器人智能孪生仿真系统"
     />
   );
 }
