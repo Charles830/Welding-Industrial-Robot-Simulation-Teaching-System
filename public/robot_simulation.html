@@ -248,6 +248,35 @@
             border-color: var(--accent-color);
             box-shadow: 0 2px 8px rgba(0,113,227,0.3);
         }
+        
+        /* 使用指南模态框 */
+        #help-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        #help-modal-content {
+            background: var(--bg-color);
+            padding: 30px;
+            border-radius: 20px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        #help-modal h2 { margin-top: 0; margin-bottom: 20px; color: var(--accent-color); }
+        #help-modal ol { padding-left: 20px; }
+        #help-modal li { margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -272,6 +301,22 @@
 </div>
 
 <div id="app">
+    <!-- 使用指南模态框 -->
+    <div id="help-modal">
+        <div id="help-modal-content">
+            <h2>TwinWeld 使用指南</h2>
+            <p>欢迎使用 TwinWeld 智能孪生仿真系统。登录后，请按照以下步骤开始您的仿真之旅：</p>
+            <ol>
+                <li><strong>导入工件</strong>：在右侧面板点击“上传模型”上传您的 STL/GLTF/OBJ 文件，或使用“基本几何体”工具快速创建工件。</li>
+                <li><strong>调整位置</strong>：选中工件后，使用平移、旋转、缩放工具调整其在工作台上的位置。</li>
+                <li><strong>示教编程</strong>：通过手动控制面板移动机器人末端到目标位置，点击“保存当前点”记录点位。</li>
+                <li><strong>添加指令</strong>：在程序列表中插入起弧、摆动等焊接工艺指令。</li>
+                <li><strong>仿真运行</strong>：点击“运行 (RUN)”按钮，系统将自动进行轨迹规划并回放焊接过程。</li>
+            </ol>
+            <button id="btn-close-help" style="margin-top: 20px; width: 100%; padding: 10px; background: var(--accent-color); color: white; border: none; border-radius: 10px; cursor: pointer;">知道了</button>
+        </div>
+    </div>
+    
     <!-- 左侧 3D 视图 -->
     <div id="canvas-container">
         <div id="top-left-controls" style="position: absolute; top: 15px; left: 15px; z-index: 5; display: flex; gap: 8px;">
@@ -280,6 +325,7 @@
             </button>
         </div>
         <div id="top-right-controls" style="position: absolute; top: 15px; right: 15px; z-index: 5; display: flex; gap: 8px;">
+            <button id="btn-help" class="view-btn" title="使用指南" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--panel-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; color: var(--text-color); transition: all 0.2s;">?</button>
             <button id="btn-screenshot" class="view-btn" title="截图" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--panel-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-color); box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; color: var(--text-color); transition: all 0.2s;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
             </button>
@@ -347,6 +393,16 @@
             <fieldset class="control-group">
                 <legend>手动控制</legend>
                 <div style="margin-bottom: 10px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 11px; opacity: 0.7;">关节步进 (°)</label>
+                            <input type="number" id="jog-step-joint" value="1" min="0.1" step="0.1" style="width: 100%; background: var(--btn-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 11px; opacity: 0.7;">XYZ步进 (mm)</label>
+                            <input type="number" id="jog-step-xyz" value="1" min="0.1" step="0.1" style="width: 100%; background: var(--btn-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 4px;">
+                        </div>
+                    </div>
                     <div class="radio-group" style="flex-wrap: wrap;">
                         <label><input type="radio" name="jog-mode" value="joint" checked> 关节(Joint)</label>
                         <label><input type="radio" name="jog-mode" value="cartesian"> 笛卡尔(Cartesian)</label>
@@ -451,7 +507,7 @@
                 </div>
                 <div class="row">
                     <label style="width:70px;">高度(H):</label>
-                    <input type="range" id="wb-height" min="10" max="80" step="1" value="40">
+                    <input type="range" id="wb-height" min="0" max="100" step="1" value="40">
                     <span class="val-display" id="wb-h-val">40 cm</span>
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -635,6 +691,13 @@
                 </div>
 
                 <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 8px; margin-top: 15px;">
+                    <span>显示工作区域</span>
+                    <label class="switch">
+                        <input type="checkbox" id="toggle-workspace">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 8px; margin-top: 15px;">
                     <span>显示轨迹</span>
                     <label class="switch">
                         <input type="checkbox" id="toggle-traj" checked>
@@ -786,6 +849,20 @@
         document.getElementById('tp-toggle-btn').innerText = tp.classList.contains('collapsed') ? '◀' : '▶';
     });
 
+    /* 使用指南模态框逻辑 */
+    const helpModal = document.getElementById('help-modal');
+    document.getElementById('btn-help').addEventListener('click', () => {
+        helpModal.style.display = 'flex';
+    });
+    document.getElementById('btn-close-help').addEventListener('click', () => {
+        helpModal.style.display = 'none';
+    });
+    window.addEventListener('click', (e) => {
+        if (e.target === helpModal) {
+            helpModal.style.display = 'none';
+        }
+    });
+
     const tpScreen = document.getElementById('tp-screen');
     let toastTimeout;
     const observer = new MutationObserver(() => {
@@ -840,6 +917,9 @@
     let workbenchParams = { l: 12, w: 8, h: 4 };
     let workbenchPosition = new THREE.Vector3(10, 0, 0);
 
+    // 工作区域相关
+    let workspaceMesh;
+
     // 模型加载相关
     let uploadedModel = null; // 当前选中的模型
     let modelAxes = null; // 当前选中模型的坐标系
@@ -888,6 +968,18 @@
         // 辅助工具
         gridHelper = new THREE.GridHelper(33, 33, 0x444444, 0x888888);
         scene.add(gridHelper);
+
+        // 工作区域展示
+        const workspaceGeo = new THREE.SphereGeometry(15, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        const workspaceMat = new THREE.MeshBasicMaterial({ color: 0xffb347, wireframe: false, transparent: true, opacity: 0.2 });
+        workspaceMesh = new THREE.Mesh(workspaceGeo, workspaceMat);
+        workspaceMesh.position.set(0, 5.1, 0);
+        workspaceMesh.visible = false;
+        scene.add(workspaceMesh);
+
+        document.getElementById('toggle-workspace').addEventListener('change', (e) => {
+            workspaceMesh.visible = e.target.checked;
+        });
 
         document.getElementById('grid-size-input').addEventListener('change', (e) => {
             let val = parseFloat(e.target.value);
@@ -1362,7 +1454,8 @@
             let jogInterval;
             const jog = (direction) => {
                 if(isRunning) return;
-                const step = 0.05; // radians
+                const stepDeg = parseFloat(document.getElementById('jog-step-joint').value) || 1;
+                const step = stepDeg * Math.PI / 180; // radians
                 let newAngle = j.group.rotation[j.axis] + direction * step;
                 newAngle = Math.max(j.min, Math.min(j.max, newAngle));
                 j.group.rotation[j.axis] = newAngle;
@@ -1371,7 +1464,7 @@
 
             const startJog = (dir) => {
                 jog(dir);
-                jogInterval = setInterval(() => jog(dir), 50);
+                jogInterval = setInterval(() => jog(dir), 100); // 恢复连续步进，间隔设为100ms以平衡速度与精度
             };
             const stopJog = () => {
                 clearInterval(jogInterval);
@@ -1445,20 +1538,24 @@
             let jogInterval;
             const jog = (direction) => {
                 if(isRunning) return;
-                const step = 0.1; // 笛卡尔步长 (1cm)
+                const stepMm = parseFloat(document.getElementById('jog-step-xyz').value) || 1;
+                const step = stepMm / 10; // convert mm to units (1 unit = 10cm = 100mm, so 1mm = 0.01 units. Wait, 1 unit = 10cm = 100mm. 1mm = 0.01 units. Correct.)
+                // Re-calculating: 1 unit = 10cm = 100mm. 1mm = 0.01 units.
+                // If user enters 1mm, step should be 0.01.
+                // If user enters 10mm, step should be 0.1.
                 const currentPos = new THREE.Vector3();
                 tcp.tip.getWorldPosition(currentPos);
-                currentPos[ax.axis] += direction * step * ax.sign;
+                currentPos[ax.axis] += direction * (stepMm / 100) * ax.sign;
                 
                 if(!solveIK(currentPos)) {
-                    // 到达极限，停止jog
-                    stopJog();
+                    // 到达极限
+                    updateScreen();
                 }
             };
 
             const startJog = (dir) => {
                 jog(dir);
-                jogInterval = setInterval(() => jog(dir), 50);
+                jogInterval = setInterval(() => jog(dir), 100); // 恢复连续步进
             };
             const stopJog = () => {
                 clearInterval(jogInterval);
@@ -1528,7 +1625,8 @@
         let jogIntervalJ6;
         const jogJ6 = (direction) => {
             if(isRunning) return;
-            const step = 0.05; // radians
+            const stepDeg = parseFloat(document.getElementById('jog-step-joint').value) || 1;
+            const step = stepDeg * Math.PI / 180; // radians
             let newAngle = joints[5].group.rotation[joints[5].axis] + direction * step;
             newAngle = Math.max(joints[5].min, Math.min(joints[5].max, newAngle));
             joints[5].group.rotation[joints[5].axis] = newAngle;
@@ -1537,7 +1635,7 @@
 
         const startJogJ6 = (dir) => {
             jogJ6(dir);
-            jogIntervalJ6 = setInterval(() => jogJ6(dir), 50);
+            jogIntervalJ6 = setInterval(() => jogJ6(dir), 100);
         };
         const stopJogJ6 = () => {
             clearInterval(jogIntervalJ6);
@@ -1892,10 +1990,8 @@
         function onModelLoaded(model, name) {
             if (!model) return;
             
-            // 高精度对齐工作台上表面 (workbenchParams.h)
-            // X=1000mm, Y=0mm, Z=400mm (工作台高度)
-            // 对应世界坐标: X=10, Z=0, Y=4 (因为 Y 是 Up)
-            model.position.set(10, workbenchParams.h, 0); 
+            // 高精度对齐工作台上表面
+            model.position.set(workbenchPosition.x, workbenchPosition.y + workbenchParams.h, workbenchPosition.z); 
             scene.add(model);
             allModels.push(model);
             if (name) model.name = name;
@@ -2105,74 +2201,70 @@
             }
         });
 
-        // 几何体添加逻辑
-        function addGeometricShape(type) {
-            let geometry;
-            const dimX = (parseFloat(document.getElementById('shape-dim-x').value) || 20) / 10;
-            const dimY = (parseFloat(document.getElementById('shape-dim-y').value) || 20) / 10;
-            const dimZ = (parseFloat(document.getElementById('shape-dim-z').value) || 20) / 10;
+    // 暴露给全局以便其他函数调用
+    window.addGeometricShape = function(type) {
+        let geometry;
+        const dimX = (parseFloat(document.getElementById('shape-dim-x').value) || 20) / 10;
+        const dimY = (parseFloat(document.getElementById('shape-dim-y').value) || 20) / 10;
+        const dimZ = (parseFloat(document.getElementById('shape-dim-z').value) || 20) / 10;
 
-            if (type === 'box') {
-                geometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
-            } else if (type === 'prism') {
-                const shape = new THREE.Shape();
-                shape.moveTo(-dimX/2, -dimY/2);
-                shape.lineTo(dimX/2, -dimY/2);
-                shape.lineTo(0, dimY/2);
-                shape.lineTo(-dimX/2, -dimY/2);
-                const extrudeSettings = { depth: dimZ, bevelEnabled: false };
-                geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                geometry.rotateX(Math.PI / 2);
-            } else if (type === 'cylinder') {
-                geometry = new THREE.CylinderGeometry(dimX/2, dimX/2, dimZ, 32);
-            } else if (type === 'sphere') {
-                geometry = new THREE.SphereGeometry(dimX/2, 32, 32);
-            } else if (type === 'plate') {
-                geometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
-                const groove = document.getElementById('shape-groove').value;
-                if (groove !== 'none') {
-                    const pos = geometry.attributes.position;
-                    for (let i = 0; i < pos.count; i++) {
-                        let x = pos.getX(i);
-                        let y = pos.getY(i);
-                        let z = pos.getZ(i);
-                        // BoxGeometry in Three.js has Z as depth (thickness), Y as height, X as width.
-                        // Wait, BoxGeometry(width, height, depth) -> X, Y, Z.
-                        // So dimX is width (X), dimY is height (Y), dimZ is depth (Z).
-                        // Top vertices have Z > 0.
-                        if (groove === 'x+' && x > 0 && z > 0) x -= dimZ;
-                        if (groove === 'x-' && x < 0 && z > 0) x += dimZ;
-                        if (groove === 'y+' && y > 0 && z > 0) y -= dimZ;
-                        if (groove === 'y-' && y < 0 && z > 0) y += dimZ;
-                        pos.setX(i, x);
-                        pos.setY(i, y);
-                    }
-                    geometry.computeVertexNormals();
+        if (type === 'box') {
+            geometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
+        } else if (type === 'prism') {
+            const shape = new THREE.Shape();
+            shape.moveTo(-dimX/2, -dimY/2);
+            shape.lineTo(dimX/2, -dimY/2);
+            shape.lineTo(0, dimY/2);
+            shape.lineTo(-dimX/2, -dimY/2);
+            const extrudeSettings = { depth: dimZ, bevelEnabled: false };
+            geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            geometry.rotateX(Math.PI / 2);
+        } else if (type === 'cylinder') {
+            geometry = new THREE.CylinderGeometry(dimX/2, dimX/2, dimZ, 32);
+        } else if (type === 'sphere') {
+            geometry = new THREE.SphereGeometry(dimX/2, 32, 32);
+        } else if (type === 'plate') {
+            geometry = new THREE.BoxGeometry(dimX, dimY, dimZ);
+            const groove = document.getElementById('shape-groove').value;
+            if (groove !== 'none') {
+                const pos = geometry.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    let x = pos.getX(i);
+                    let y = pos.getY(i);
+                    let z = pos.getZ(i);
+                    if (groove === 'x+' && x > 0 && z > 0) x -= dimZ;
+                    if (groove === 'x-' && x < 0 && z > 0) x += dimZ;
+                    if (groove === 'y+' && y > 0 && z > 0) y -= dimZ;
+                    if (groove === 'y-' && y < 0 && z > 0) y += dimZ;
+                    pos.setX(i, x);
+                    pos.setY(i, y);
                 }
+                geometry.computeVertexNormals();
             }
-
-            const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 });
-            const mesh = new THREE.Mesh(geometry, material);
-            
-            mesh.userData = {
-                isShape: true,
-                shapeType: type,
-                dimX: dimX * 10,
-                dimY: dimY * 10,
-                dimZ: dimZ * 10,
-                groove: type === 'plate' ? document.getElementById('shape-groove').value : 'none'
-            };
-            
-            const typeNames = {
-                'box': '长方体',
-                'prism': '多边形',
-                'cylinder': '圆柱体',
-                'sphere': '球体',
-                'plate': '薄板'
-            };
-            const name = (typeNames[type] || '工件') + (allModels.length + 1);
-            onModelLoaded(processModel(mesh), name);
         }
+
+        const material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 });
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        mesh.userData = {
+            isShape: true,
+            shapeType: type,
+            dimX: dimX * 10,
+            dimY: dimY * 10,
+            dimZ: dimZ * 10,
+            groove: type === 'plate' ? document.getElementById('shape-groove').value : 'none'
+        };
+        
+        const typeNames = {
+            'box': '长方体',
+            'prism': '多边形',
+            'cylinder': '圆柱体',
+            'sphere': '球体',
+            'plate': '薄板'
+        };
+        const name = (typeNames[type] || '工件') + (allModels.length + 1);
+        onModelLoaded(processModel(mesh), name);
+    };
 
         function updateSelectedShape() {
             if (!uploadedModel || !uploadedModel.userData.isShape) return;
@@ -2271,14 +2363,14 @@
         document.getElementById('shape-dim-z').addEventListener('input', updateSelectedShape);
         document.getElementById('shape-groove').addEventListener('change', updateSelectedShape);
 
-        document.getElementById('btn-add-box').addEventListener('click', () => addGeometricShape('box'));
-        document.getElementById('btn-add-prism').addEventListener('click', () => addGeometricShape('prism'));
-        document.getElementById('btn-add-cylinder').addEventListener('click', () => addGeometricShape('cylinder'));
-        document.getElementById('btn-add-sphere').addEventListener('click', () => addGeometricShape('sphere'));
+        document.getElementById('btn-add-box').addEventListener('click', () => window.addGeometricShape('box'));
+        document.getElementById('btn-add-prism').addEventListener('click', () => window.addGeometricShape('prism'));
+        document.getElementById('btn-add-cylinder').addEventListener('click', () => window.addGeometricShape('cylinder'));
+        document.getElementById('btn-add-sphere').addEventListener('click', () => window.addGeometricShape('sphere'));
         document.getElementById('btn-add-plate').addEventListener('click', () => {
             // 设置薄板的默认厚度
             document.getElementById('shape-dim-z').value = 2;
-            addGeometricShape('plate');
+            window.addGeometricShape('plate');
         });
     }
 
@@ -2393,6 +2485,26 @@
         document.getElementById('tp-screen').innerHTML = `WORKBENCH POSITION RESET.`;
     });
 
+    // 碰撞检测
+    function checkCollision() {
+        if (!tcp || !tcp.tip) return false;
+        const tcpPos = new THREE.Vector3();
+        tcp.tip.getWorldPosition(tcpPos);
+        
+        // Check workbench
+        if (workbenchGroup) {
+            const wbBox = new THREE.Box3().setFromObject(workbenchGroup);
+            if (wbBox.containsPoint(tcpPos)) return true;
+        }
+        
+        // Check models
+        for (let m of allModels) {
+            const mBox = new THREE.Box3().setFromObject(m);
+            if (mBox.containsPoint(tcpPos)) return true;
+        }
+        return false;
+    }
+
     // 更新示教器屏幕显示
     function updateScreen() {
         const pos = new THREE.Vector3();
@@ -2416,6 +2528,13 @@
             joints[5].inputElementCartesian.value = (joints[5].group.rotation[joints[5].axis] * 180 / Math.PI).toFixed(1);
         }
         
+        if (checkCollision()) {
+            html += `<br><br><span style="color:#ff4444; font-weight:bold; animation: blink 1s infinite;">ALARM: COLLISION DETECTED!</span>`;
+            if (isRunning) {
+                stopRun();
+            }
+        }
+
         document.getElementById('status-panel').innerHTML = html;
     }
 
@@ -2450,14 +2569,13 @@
             tcp.tip.getWorldPosition(tcpWorldPos);
             if (tcpWorldPos.distanceTo(targetWorldPos) < tolerance) break;
 
-            // 如果是姿态保持模式，只迭代前三个关节，并固定后三个关节
-            let startJoint = joints.length - 1;
+            // 采用从底部 J1 至末端 J6 的关节顺序进行转动 (0 -> endJoint)
+            let endJoint = joints.length - 1;
             if (jogMode === 'posture') {
-                startJoint = 2; // 只迭代 J3, J2, J1
+                endJoint = 2; // 只迭代 J1, J2, J3
             }
 
-            // 从末端关节向基座遍历
-            for (let i = startJoint; i >= 0; i--) {
+            for (let i = 0; i <= endJoint; i++) {
                 const joint = joints[i];
                 
                 let currentEffectorPos = new THREE.Vector3();
@@ -2536,6 +2654,7 @@
                     joints[4].group.rotation.z = -Math.PI/2 - joints[1].group.rotation.z - joints[2].group.rotation.z; // J5
                     
                     joints[3].group.updateMatrixWorld(true);
+                    joints[4].group.updateMatrixWorld(true);
                 }
             }
         }
@@ -2959,22 +3078,47 @@
     }
 
     function downloadProgram() {
-        if (waypoints.length === 0) {
-            document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: NO PROGRAM TO DOWNLOAD.</span>`;
+        if (waypoints.length === 0 && allModels.length === 0) {
+            document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: NO PROGRAM OR MODELS TO DOWNLOAD.</span>`;
             return;
         }
-        const data = JSON.stringify(waypoints, null, 2);
+        
+        const exportData = {
+            waypoints: waypoints,
+            workbench: {
+                l: workbenchParams.l,
+                w: workbenchParams.w,
+                h: workbenchParams.h,
+                pos: { x: workbenchPosition.x, y: workbenchPosition.y, z: workbenchPosition.z }
+            },
+            models: allModels.map(m => {
+                return {
+                    name: m.name,
+                    isShape: m.userData.isShape,
+                    shapeType: m.userData.shapeType,
+                    dimX: m.userData.dimX,
+                    dimY: m.userData.dimY,
+                    dimZ: m.userData.dimZ,
+                    groove: m.userData.groove,
+                    position: { x: m.position.x, y: m.position.y, z: m.position.z },
+                    rotation: { x: m.rotation.x, y: m.rotation.y, z: m.rotation.z },
+                    scale: { x: m.scale.x, y: m.scale.y, z: m.scale.z }
+                };
+            })
+        };
+        
+        const data = JSON.stringify(exportData, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         a.href = url;
-        a.download = `robot_program_${timestamp}.json`;
+        a.download = `robot_scene_${timestamp}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        document.getElementById('tp-screen').innerHTML = `PROGRAM DOWNLOADED.`;
+        document.getElementById('tp-screen').innerHTML = `SCENE DOWNLOADED.`;
     }
 
     function importProgram(event) {
@@ -2984,13 +3128,56 @@
         reader.onload = (e) => {
             try {
                 const imported = JSON.parse(e.target.result);
-                if (Array.isArray(imported)) {
-                    const processed = imported.map(item => {
+                let importedWaypoints = imported;
+                
+                if (imported.waypoints) {
+                    importedWaypoints = imported.waypoints;
+                    
+                    // Import workbench
+                    if (imported.workbench) {
+                        workbenchParams.l = imported.workbench.l;
+                        workbenchParams.w = imported.workbench.w;
+                        workbenchParams.h = imported.workbench.h;
+                        document.getElementById('wb-length').value = workbenchParams.l * 10;
+                        document.getElementById('wb-width').value = workbenchParams.w * 10;
+                        document.getElementById('wb-height').value = workbenchParams.h * 10;
+                        document.getElementById('wb-l-val').innerText = (workbenchParams.l * 10) + ' cm';
+                        document.getElementById('wb-w-val').innerText = (workbenchParams.w * 10) + ' cm';
+                        document.getElementById('wb-h-val').innerText = (workbenchParams.h * 10) + ' cm';
+                        workbenchPosition.set(imported.workbench.pos.x, imported.workbench.pos.y, imported.workbench.pos.z);
+                        updateWorkbench();
+                    }
+                    
+                    // Import models
+                    if (imported.models) {
+                        imported.models.forEach(mData => {
+                            if (mData.isShape) {
+                                document.getElementById('shape-dim-x').value = mData.dimX;
+                                document.getElementById('shape-dim-y').value = mData.dimY;
+                                document.getElementById('shape-dim-z').value = mData.dimZ;
+                                if (mData.groove) document.getElementById('shape-groove').value = mData.groove;
+                                
+                                window.addGeometricShape(mData.shapeType);
+                                setTimeout(() => {
+                                    const m = allModels[allModels.length - 1];
+                                    if (m) {
+                                        m.position.set(mData.position.x, mData.position.y, mData.position.z);
+                                        m.rotation.set(mData.rotation.x, mData.rotation.y, mData.rotation.z);
+                                        m.scale.set(mData.scale.x, mData.scale.y, mData.scale.z);
+                                    }
+                                }, 50);
+                            }
+                        });
+                    }
+                }
+
+                if (Array.isArray(importedWaypoints)) {
+                    const processed = importedWaypoints.map(item => {
                         if (item.type === 'point' && item.pos) {
                             return {
                                 ...item,
                                 pos: new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z),
-                                angles: item.angles || [] // 确保包含关节角度信息
+                                angles: item.angles || []
                             };
                         }
                         return item;
@@ -3001,7 +3188,7 @@
                         waypoints = processed;
                         selectedPointIndex = -1;
                         renderPointList();
-                        document.getElementById('tp-screen').innerHTML = `PROGRAM IMPORTED: ${waypoints.length} ITEMS.`;
+                        document.getElementById('tp-screen').innerHTML = `SCENE IMPORTED: ${waypoints.length} ITEMS.`;
                     } else {
                         throw new Error('Invalid program format');
                     }
