@@ -2529,9 +2529,40 @@
         }
         
         if (checkCollision()) {
-            html += `<br><br><span style="color:#ff4444; font-weight:bold; animation: blink 1s infinite;">ALARM: COLLISION DETECTED!</span>`;
+            html += `<br><br><span style="color:#ff4444; font-weight:bold;">警告：发生碰撞！</span>`;
             if (isRunning) {
                 stopRun();
+            }
+            
+            // 显示网页中央的报警叠加层
+            let collisionOverlay = document.getElementById('collision-overlay');
+            if (!collisionOverlay) {
+                collisionOverlay = document.createElement('div');
+                collisionOverlay.id = 'collision-overlay';
+                Object.assign(collisionOverlay.style, {
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    backgroundColor: 'rgba(255, 30, 30, 0.95)',
+                    color: '#ffffff',
+                    padding: '15px 30px',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    boxShadow: '0 5px 20px rgba(255, 0, 0, 0.4)',
+                    zIndex: '9999',
+                    pointerEvents: 'none',
+                    textAlign: 'center'
+                });
+                collisionOverlay.innerHTML = '⚠️ 警告：发生碰撞！';
+                document.body.appendChild(collisionOverlay);
+            }
+            collisionOverlay.style.display = 'block';
+        } else {
+            const collisionOverlay = document.getElementById('collision-overlay');
+            if (collisionOverlay) {
+                collisionOverlay.style.display = 'none';
             }
         }
 
