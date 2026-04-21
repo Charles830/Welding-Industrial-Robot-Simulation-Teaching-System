@@ -293,7 +293,8 @@
         <div style="display: flex; flex-direction: column; gap: 16px;">
             <input type="text" id="auth-username" placeholder="账号" style="padding: 12px 14px; border-radius: 8px; border: 1px solid #e5e5ea; background: #f2f2f7; color: #1c1c1e; outline: none; font-size: 14px; transition: border-color 0.2s;">
             <input type="password" id="auth-password" placeholder="密码" style="padding: 12px 14px; border-radius: 8px; border: 1px solid #e5e5ea; background: #f2f2f7; color: #1c1c1e; outline: none; font-size: 14px; transition: border-color 0.2s;">
-            <button id="btn-auth-submit" style="padding: 12px; background: #0a84ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 8px; font-size: 15px; box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3); transition: transform 0.1s, box-shadow 0.1s;">登录</button>
+            <div style="color: #8e8e93; font-size: 13px; text-align: center; margin-top: -6px; letter-spacing: 0.5px;">默认登录账号为:admin，登录密码为:12345</div>
+            <button id="btn-auth-submit" style="padding: 12px; background: #0a84ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 6px; font-size: 15px; box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3); transition: transform 0.1s, box-shadow 0.1s;">登录</button>
         </div>
         <div id="auth-error" style="color: #ff3b30; font-size: 13px; margin-top: 16px; text-align: center; min-height: 18px; font-weight: 500;"></div>
     </div>
@@ -770,7 +771,7 @@
         }
 
         if (authMode === 'login') {
-            if (username === 'admin' && password === 'admin123') {
+            if (username === 'admin' && password === '12345') {
                 authOverlay.style.display = 'none';
                 return;
             }
