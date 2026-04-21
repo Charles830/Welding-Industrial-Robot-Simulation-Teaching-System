@@ -2488,21 +2488,7 @@
 
     // 碰撞检测
     function checkCollision() {
-        if (!tcp || !tcp.tip) return false;
-        const tcpPos = new THREE.Vector3();
-        tcp.tip.getWorldPosition(tcpPos);
-        
-        // Check workbench
-        if (workbenchGroup) {
-            const wbBox = new THREE.Box3().setFromObject(workbenchGroup);
-            if (wbBox.containsPoint(tcpPos)) return true;
-        }
-        
-        // Check models
-        for (let m of allModels) {
-            const mBox = new THREE.Box3().setFromObject(m);
-            if (mBox.containsPoint(tcpPos)) return true;
-        }
+        // 已取消所有碰撞检测（工作台和模型）
         return false;
     }
 
