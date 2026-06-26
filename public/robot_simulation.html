@@ -448,7 +448,7 @@
                 </div>
 
                 <!-- 第五组：导入导出 -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                     <button id="btn-download-prog" style="font-size: 12px; padding: 10px; border-radius: 10px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 4px;">
                         导出程序
                     </button>
@@ -457,6 +457,9 @@
                     </button>
                     <input type="file" id="import-prog-file" style="display: none;" accept=".json">
                 </div>
+                <button id="btn-load-demo" style="width: 100%; font-size: 12px; padding: 10px; border-radius: 10px; margin: 0 0 12px 0; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    加载焊接演示示例
+                </button>
 
                 <ul id="point-list" style="max-height: 150px;"></ul>
 
@@ -1716,6 +1719,9 @@
             document.getElementById('import-prog-file').click();
         });
         document.getElementById('import-prog-file').addEventListener('change', importProgram);
+        document.getElementById('btn-load-demo').addEventListener('click', () => {
+            if (window.loadDemoProgram) window.loadDemoProgram();
+        });
         document.getElementById('btn-run').addEventListener('click', startRun);
         document.getElementById('btn-stop').addEventListener('click', stopRun);
         
@@ -1987,6 +1993,8 @@
                 }
             }
         }
+        window.selectModel = selectModel;
+        window.updateModelListUI = updateModelListUI;
 
         function onModelLoaded(model, name) {
             if (!model) return;
@@ -3100,6 +3108,10 @@
             document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: NO PROGRAM OR MODELS TO DOWNLOAD.</span>`;
             return;
         }
+
+        const currentWeldMode = document.querySelector('input[name="weld"]:checked') ? document.querySelector('input[name="weld"]:checked').value : 'laser';
+        const currentWeaveAmplitude = parseFloat(document.getElementById('weave-amplitude').value) || 0.4;
+        const currentGlobalSpeed = parseFloat(document.getElementById('global-speed').value) || 30;
         
         const exportData = {
             waypoints: waypoints,
@@ -3118,11 +3130,17 @@
                     dimY: m.userData.dimY,
                     dimZ: m.userData.dimZ,
                     groove: m.userData.groove,
+                    isLocked: m.userData.isLocked || false,
                     position: { x: m.position.x, y: m.position.y, z: m.position.z },
                     rotation: { x: m.rotation.x, y: m.rotation.y, z: m.rotation.z },
                     scale: { x: m.scale.x, y: m.scale.y, z: m.scale.z }
                 };
-            })
+            }),
+            welding: {
+                weldMode: currentWeldMode,
+                weaveAmplitude: currentWeaveAmplitude
+            },
+            globalSpeed: currentGlobalSpeed
         };
         
         const data = JSON.stringify(exportData, null, 2);
@@ -3139,6 +3157,124 @@
         document.getElementById('tp-screen').innerHTML = `SCENE DOWNLOADED.`;
     }
 
+    function clearAllModels() {
+        allModels.forEach(m => scene.remove(m));
+        allModels = [];
+        uploadedModel = null;
+        modelAxes = null;
+        transformControl.detach();
+        const statusDiv = document.getElementById('model-status');
+        const controlsDiv = document.getElementById('model-controls');
+        const viewPerspectivesDiv = document.getElementById('view-perspectives');
+        if (statusDiv) {
+            statusDiv.innerText = '未加载模型';
+            statusDiv.style.display = 'none';
+        }
+        if (controlsDiv) controlsDiv.style.display = 'none';
+        if (viewPerspectivesDiv) viewPerspectivesDiv.style.display = 'none';
+        const fileInput = document.getElementById('model-upload');
+        if (fileInput) fileInput.value = '';
+        if (window.updateModelListUI) window.updateModelListUI();
+    }
+
+    function loadProgramData(imported) {
+        let importedWaypoints = imported;
+        
+        if (imported.waypoints) {
+            importedWaypoints = imported.waypoints;
+            
+            // Clear existing models
+            clearAllModels();
+            
+            // Import workbench
+            if (imported.workbench) {
+                workbenchParams.l = imported.workbench.l;
+                workbenchParams.w = imported.workbench.w;
+                workbenchParams.h = imported.workbench.h;
+                document.getElementById('wb-length').value = workbenchParams.l * 10;
+                document.getElementById('wb-width').value = workbenchParams.w * 10;
+                document.getElementById('wb-height').value = workbenchParams.h * 10;
+                document.getElementById('wb-l-val').innerText = (workbenchParams.l * 10) + ' cm';
+                document.getElementById('wb-w-val').innerText = (workbenchParams.w * 10) + ' cm';
+                document.getElementById('wb-h-val').innerText = (workbenchParams.h * 10) + ' cm';
+                workbenchPosition.set(imported.workbench.pos.x, imported.workbench.pos.y, imported.workbench.pos.z);
+                updateWorkbench();
+            }
+            
+            // Import models
+            if (imported.models) {
+                imported.models.forEach(mData => {
+                    if (mData.isShape) {
+                        document.getElementById('shape-dim-x').value = mData.dimX;
+                        document.getElementById('shape-dim-y').value = mData.dimY;
+                        document.getElementById('shape-dim-z').value = mData.dimZ;
+                        if (mData.groove) document.getElementById('shape-groove').value = mData.groove;
+                        
+                        window.addGeometricShape(mData.shapeType);
+                        const m = allModels[allModels.length - 1];
+                        if (m) {
+                            m.position.set(mData.position.x, mData.position.y, mData.position.z);
+                            m.rotation.set(mData.rotation.x, mData.rotation.y, mData.rotation.z);
+                            m.scale.set(mData.scale.x, mData.scale.y, mData.scale.z);
+                            m.userData.isLocked = mData.isLocked || false;
+                            if (window.selectModel) window.selectModel(m);
+                        }
+                    }
+                });
+            }
+
+            // Import welding process settings
+            if (imported.welding) {
+                const wMode = imported.welding.weldMode || 'laser';
+                const wAmp = imported.welding.weaveAmplitude || 0.4;
+                
+                const radio = document.querySelector(`input[name="weld"][value="${wMode}"]`);
+                if (radio) {
+                    radio.checked = true;
+                }
+                runState.weldMode = wMode;
+                
+                document.getElementById('weave-amplitude').value = wAmp;
+                document.getElementById('weave-val').innerText = parseFloat(wAmp).toFixed(2);
+                runState.weaveAmplitude = parseFloat(wAmp);
+            }
+            
+            // Import global speed setting
+            if (imported.globalSpeed !== undefined) {
+                const speedVal = imported.globalSpeed;
+                document.getElementById('global-speed').value = speedVal;
+                document.getElementById('speed-val').innerText = speedVal + '%';
+                runState.speed = parseFloat(speedVal) / 100;
+            }
+        }
+
+        if (Array.isArray(importedWaypoints)) {
+            const processed = importedWaypoints.map(item => {
+                if (item.type === 'point' && item.pos) {
+                    return {
+                        ...item,
+                        pos: new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z),
+                        angles: item.angles || []
+                    };
+                }
+                return item;
+            });
+            
+            const isValid = processed.every(item => item.type && (item.type === 'cmd' || item.pos));
+            if (isValid) {
+                waypoints = processed;
+                selectedPointIndex = -1;
+                renderPointList();
+                document.getElementById('tp-screen').innerHTML = `SCENE IMPORTED: ${waypoints.length} ITEMS.`;
+                return true;
+            } else {
+                throw new Error('Invalid program format');
+            }
+        } else {
+            throw new Error('Imported data is not an array');
+        }
+    }
+
     function importProgram(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -3146,73 +3282,7 @@
         reader.onload = (e) => {
             try {
                 const imported = JSON.parse(e.target.result);
-                let importedWaypoints = imported;
-                
-                if (imported.waypoints) {
-                    importedWaypoints = imported.waypoints;
-                    
-                    // Import workbench
-                    if (imported.workbench) {
-                        workbenchParams.l = imported.workbench.l;
-                        workbenchParams.w = imported.workbench.w;
-                        workbenchParams.h = imported.workbench.h;
-                        document.getElementById('wb-length').value = workbenchParams.l * 10;
-                        document.getElementById('wb-width').value = workbenchParams.w * 10;
-                        document.getElementById('wb-height').value = workbenchParams.h * 10;
-                        document.getElementById('wb-l-val').innerText = (workbenchParams.l * 10) + ' cm';
-                        document.getElementById('wb-w-val').innerText = (workbenchParams.w * 10) + ' cm';
-                        document.getElementById('wb-h-val').innerText = (workbenchParams.h * 10) + ' cm';
-                        workbenchPosition.set(imported.workbench.pos.x, imported.workbench.pos.y, imported.workbench.pos.z);
-                        updateWorkbench();
-                    }
-                    
-                    // Import models
-                    if (imported.models) {
-                        imported.models.forEach(mData => {
-                            if (mData.isShape) {
-                                document.getElementById('shape-dim-x').value = mData.dimX;
-                                document.getElementById('shape-dim-y').value = mData.dimY;
-                                document.getElementById('shape-dim-z').value = mData.dimZ;
-                                if (mData.groove) document.getElementById('shape-groove').value = mData.groove;
-                                
-                                window.addGeometricShape(mData.shapeType);
-                                setTimeout(() => {
-                                    const m = allModels[allModels.length - 1];
-                                    if (m) {
-                                        m.position.set(mData.position.x, mData.position.y, mData.position.z);
-                                        m.rotation.set(mData.rotation.x, mData.rotation.y, mData.rotation.z);
-                                        m.scale.set(mData.scale.x, mData.scale.y, mData.scale.z);
-                                    }
-                                }, 50);
-                            }
-                        });
-                    }
-                }
-
-                if (Array.isArray(importedWaypoints)) {
-                    const processed = importedWaypoints.map(item => {
-                        if (item.type === 'point' && item.pos) {
-                            return {
-                                ...item,
-                                pos: new THREE.Vector3(item.pos.x, item.pos.y, item.pos.z),
-                                angles: item.angles || []
-                            };
-                        }
-                        return item;
-                    });
-                    
-                    const isValid = processed.every(item => item.type && (item.type === 'cmd' || item.pos));
-                    if (isValid) {
-                        waypoints = processed;
-                        selectedPointIndex = -1;
-                        renderPointList();
-                        document.getElementById('tp-screen').innerHTML = `SCENE IMPORTED: ${waypoints.length} ITEMS.`;
-                    } else {
-                        throw new Error('Invalid program format');
-                    }
-                } else {
-                    throw new Error('Imported data is not an array');
-                }
+                loadProgramData(imported);
             } catch (err) {
                 console.error(err);
                 document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: IMPORT FAILED. ${err.message}</span>`;
@@ -3221,6 +3291,113 @@
         };
         reader.readAsText(file);
     }
+
+    const demoProgramData = {
+        waypoints: [
+            {
+                type: "point",
+                pos: { x: 7.32, y: 13.7, z: 0 },
+                angles: [0, 0, 0, 0, 0, 0],
+                interp: "ptp"
+            },
+            {
+                type: "point",
+                pos: { x: 3.7500000000000004, y: 11.03, z: 0 },
+                angles: [0, 0, 0, 0, -1.5707963267948966, 0],
+                interp: "ptp"
+            },
+            {
+                type: "point",
+                pos: { x: 5.0535375885338, y: 9.127569197358163, z: -0.00008979018696524598 },
+                angles: [0.000017767788481393154, -0.35458692275409653, -0.039147751799159636, 0, -1.1770616522416404, 0],
+                interp: "ptp"
+            },
+            {
+                type: "point",
+                pos: { x: 5.507527328962212, y: 8.760202148818415, z: -0.04009870974032513 },
+                angles: [0.0072805814370902056, -0.4750105317169915, 0.04479890562256905, 0, -1.1405847007004741, 0],
+                interp: "line"
+            },
+            { type: "cmd", cmd: "ARC_START" },
+            { type: "cmd", cmd: "WEAVE_START" },
+            {
+                type: "point",
+                pos: { x: 7.541762843867677, y: 8.768896618044257, z: -0.03988280198305275 },
+                angles: [0.005288210598974885, -0.9486862029277265, 0.8751964441680204, 0, -1.4973065680351905, 0],
+                interp: "line"
+            },
+            { type: "cmd", cmd: "WEAVE_STOP" },
+            { type: "cmd", cmd: "ARC_STOP" },
+            { type: "cmd", cmd: "WAIT" },
+            {
+                type: "point",
+                pos: { x: 7.5295911759843, y: 9.349321960583131, z: 0 },
+                angles: [0.015513626223365714, -0.7382877430573133, 0.6338742396976805, 0.004483735541358058, -1.265112565312504, -0.294699301389359],
+                interp: "line"
+            },
+            {
+                type: "point",
+                pos: { x: 3.753455184575428, y: 11.029560187825771, z: 0.00007438498293727001 },
+                angles: [0.000015513626223354407, -0.0007382877430567314, 0.0006338742396971853, 0, -1.5706919132915371, -0.00029469930138914524],
+                interp: "ptp"
+            },
+            {
+                type: "point",
+                pos: { x: 7.32, y: 13.7, z: 0 },
+                angles: [0, 0, 0, 0, 0, 0],
+                interp: "ptp"
+            }
+        ],
+        workbench: {
+            l: 12,
+            w: 8,
+            h: 9,
+            pos: { x: 10, y: 0, z: 0 }
+        },
+        models: [
+            {
+                name: "薄板1",
+                isShape: true,
+                shapeType: "plate",
+                dimX: 20,
+                dimY: 20,
+                dimZ: 2,
+                groove: "y-",
+                isLocked: true,
+                position: { x: 6.579488119718979, y: 8.748648093145047, z: 0.959932461326249 },
+                rotation: { x: -1.5707963267948966, y: 0, z: -3.141592653589793 },
+                scale: { x: 1, y: 1, z: 1 }
+            },
+            {
+                name: "薄板2",
+                isShape: true,
+                shapeType: "plate",
+                dimX: 20,
+                dimY: 20,
+                dimZ: 2,
+                groove: "y-",
+                isLocked: true,
+                position: { x: 6.58, y: 8.75, z: -1.04 },
+                rotation: { x: -1.5707963267948966, y: 0, z: 0 },
+                scale: { x: 1, y: 1, z: 1 }
+            }
+        ],
+        welding: {
+            weldMode: "arc",
+            weaveAmplitude: 0.1
+        },
+        globalSpeed: 90
+    };
+
+    window.loadDemoProgram = function() {
+        try {
+            loadProgramData(demoProgramData);
+            document.getElementById('tp-screen').innerHTML = `★ DEMO LOADED SUCCESS.<br>CLICK "RUN" TO START!`;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('tp-screen').innerHTML = `<span style="color:#ff4444">ERROR: LOAD DEMO FAILED.</span>`;
+        }
+    };
 
     function startRun() {
         // runState.mode 仅作为全局默认值，现在优先使用点位自带的 interp
